@@ -22,6 +22,7 @@ import org.nd4j.linalg.cpu.nativecpu.bindings.Nd4jCpu;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.inverse.InvertMatrix;
 import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.ops.transforms.Transforms;
 import org.nd4j.weightinit.impl.XavierInitScheme;
@@ -32,40 +33,44 @@ import org.nd4j.weightinit.impl.XavierInitScheme;
  */
 public class RGNNShared {
 
-    boolean targetProbability;
     int numNodes;
     SameDiff sd;
+    SDVariable softmax;
+    SDVariable identity;
+    SDVariable sigmoid;
+    SDVariable label;
 
-    public RGNNShared(INDArray relationShipAdjTensor, int numNodes, int layers, boolean targetProbability) {
-        this.targetProbability = targetProbability;
+    public RGNNShared(INDArray relationShipAdjTensor, int numNodes, int layers, boolean sigmoid) {
         this.numNodes = numNodes;
         sd = SameDiff.create();
         //the shared wieghts
         //Create input and label variables
         SDVariable in = sd.placeHolder("X", DataType.FLOAT, -1, numNodes);
         SDVariable beta = sd.var("beta", new XavierInitScheme('c', numNodes, numNodes), DataType.FLOAT, numNodes, numNodes);
-        SDVariable out = sd.placeHolder("label", DataType.FLOAT, -1, numNodes);
-        List<SDVariable> layersRefs = new ArrayList<>();
+        label = sd.placeHolder("label", DataType.FLOAT, -1, numNodes);
         SDVariable last = in;
-        for (int r = 0; r < relationShipAdjTensor.shape()[0]; r++) {
-            /* the trained per-relationship linear combination of beta */
-            SDVariable alpha = sd.var("alpha_" + r, Nd4j.ones(numNodes));
-            //diagonalize it so alpha times beta is a matrix
-            SDVariable alphaDiag = sd.math.diag("alphaDiag_" + r, alpha);
-            //w = alpha times beta
-            SDVariable w0 = alphaDiag.mmul(beta);
-            SDVariable b0 = sd.zero("b0_" + r, 1, numNodes);
-            INDArray adjcencyMatrix = relationShipAdjTensor.tensorAlongDimension(r, 1, 2).castTo(DataType.FLOAT);
-            INDArray deg = Nd4j.diag(adjcencyMatrix.sum(1));//Transforms.pow(Nd4j.diag(adjcencyMatrix.sum(1)), -.5);
-            INDArray normalizedadjcencyMatrix = deg.mul(adjcencyMatrix).mul(deg);
-            SDVariable adj = sd.constant("A_" + r, normalizedadjcencyMatrix);
-            layersRefs.add(last = sd.nn().relu("layer_" + r, last.mmul(adj).mmul(w0).add(b0), 0));
+        for (int layer = 0; layer < layers; layer++) {
+            for (int r = 0; r < relationShipAdjTensor.shape()[0]; r++) {
+                /* the trained per-relationship linear combination of beta */
+                SDVariable alpha = sd.var( Nd4j.ones(numNodes));
+                //diagonalize it so alpha times beta is a matrix
+                SDVariable alphaDiag = sd.math.diag( alpha);
+                //w = alpha times beta
+                SDVariable w0 = alphaDiag.mmul(beta);
+                SDVariable b0 = sd.zero("b0_" + r + "_" + layer, 1, numNodes);
+                INDArray adjcencyMatrix = relationShipAdjTensor.tensorAlongDimension(r, 1, 2)
+                        .castTo(DataType.FLOAT); //self loops;
+                INDArray deg = InvertMatrix.invert(Nd4j.diag(adjcencyMatrix.sum(1)), false);//Transforms.pow(Nd4j.diag(adjcencyMatrix.sum(1)), -.5);
+                adjcencyMatrix = adjcencyMatrix.add(Nd4j.eye(numNodes));
+                INDArray normalizedadjcencyMatrix = deg.mul(adjcencyMatrix);
+                SDVariable adj = sd.constant("A_" + r + "_" + layer, normalizedadjcencyMatrix);
+                last = !sigmoid ? last.mmul(adj).mmul(w0).add(b0) : sd.nn().sigmoid(last.mmul(adj).mmul(w0).add(b0));
+            }
         }
-
-        SDVariable output = targetProbability ? last.mmul("output", sd.math.eye(numNodes)) : sd.nn().softmax("output", last);
+        identity = last;
 
         //Define loss function:
-        SDVariable loss = targetProbability ? sd.loss.sigmoidCrossEntropy(out, output, null) : sd.math.squaredDifference(output, out).mean();
+        SDVariable loss = sd.math.squaredDifference(identity, label).mean();
         sd.setLossVariables(loss);
 
         //Create and set the training configuration
@@ -126,7 +131,7 @@ public class RGNNShared {
         for (int i = 0; i < input.shape()[0]; i++) {
             INDArray inp = input.tensorAlongDimension(i, 1, 2);
             sd.getVariable("X").setArray(inp);
-            r.putColumn(i, sd.getVariable("output").eval());
+            r.putColumn(i, identity.eval());
         }
         return r;
     }
@@ -135,12 +140,13 @@ public class RGNNShared {
     * input is shape [feature index, node index]
      */
     public void fit(INDArray input, INDArray output) {
+
         for (int i = 0; i < input.shape()[0]; i++) {
             INDArray inp = input.tensorAlongDimension(i, 1, 2);
             INDArray outp = output.tensorAlongDimension(i, 1, 2);
             sd.getVariable("X").setArray(inp);
             DataSet ds = new DataSet(input, outp);
-            sd.fit(ds, new ScoreListener(50));
+            sd.fit(ds, new ScoreListener(200));
         }
     }
 
