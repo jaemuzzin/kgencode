@@ -3,6 +3,9 @@ package cloud.asaru.thekg;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
+import org.nd4j.autodiff.samediff.SDVariable;
+import org.nd4j.autodiff.samediff.SameDiff;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -50,6 +53,7 @@ public class RGNNSharedTest {
     }
     
     
+    
     @Test
     public void testtwoRelTwoLayerLearnableOnemissing() {
         System.out.println("testtwoRelTwoLayerLearnableOnemissing");
@@ -88,13 +92,13 @@ public class RGNNSharedTest {
         RGNNShared instance = new RGNNShared(
                 Nd4j.createFromArray(new int[][][] {{{1,0,1},{0,1,1},{1,1,1}},{{1,1,1},{1,1,0},{1,0,1}},{{1,1,0},{1,1,1},{0,1,1}},{{1,1,1},{1,1,1},{1,1,1}}}),
         3,1,true);
-        INDArray expResult = Nd4j.createFromArray(new double[][]{{.5,.001,.999}});
+        INDArray expResult = Nd4j.createFromArray(new double[][]{{.5,.01,.999}});
         for(int i=0;i<5000;i++)instance.fit(input, expResult);
         INDArray result = instance.output(input);
         System.out.println(result.toString());
-        assertEquals(.5, result.getDouble(0,0), .001);
-        assertEquals(.001, result.getDouble(0,1), .001);
-        assertEquals(.99, result.getDouble(0,2), .001);
+        assertEquals(.5, result.getDouble(0,0), .01);
+        assertEquals(.01, result.getDouble(0,1), .1);
+        assertEquals(.99, result.getDouble(0,2), .01);
     }
     
 }

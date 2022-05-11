@@ -52,19 +52,17 @@ public class RGNNShared {
         for (int layer = 0; layer < layers; layer++) {
             for (int r = 0; r < relationShipAdjTensor.shape()[0]; r++) {
                 /* the trained per-relationship linear combination of beta */
-                SDVariable alpha = sd.var( Nd4j.ones(numNodes));
-                //diagonalize it so alpha times beta is a matrix
-                SDVariable alphaDiag = sd.math.diag( alpha);
+                SDVariable alpha = sd.var("alpha_" + r + "_" + layer, Nd4j.ones(numNodes));
                 //w = alpha times beta
-                SDVariable w0 = alphaDiag.mmul(beta);
-                SDVariable b0 = sd.zero("b0_" + r + "_" + layer, 1, numNodes);
+                SDVariable w = beta.mmul("w_" + r + "_" + layer, sd.math.diag(alpha));
+                SDVariable b = sd.zero("b_" + r + "_" + layer, 1, numNodes);
                 INDArray adjcencyMatrix = relationShipAdjTensor.tensorAlongDimension(r, 1, 2)
                         .castTo(DataType.FLOAT); //self loops;
                 INDArray deg = InvertMatrix.invert(Nd4j.diag(adjcencyMatrix.sum(1)), false);//Transforms.pow(Nd4j.diag(adjcencyMatrix.sum(1)), -.5);
                 adjcencyMatrix = adjcencyMatrix.add(Nd4j.eye(numNodes));
                 INDArray normalizedadjcencyMatrix = deg.mul(adjcencyMatrix);
                 SDVariable adj = sd.constant("A_" + r + "_" + layer, normalizedadjcencyMatrix);
-                last = !sigmoid ? last.mmul(adj).mmul(w0).add(b0) : sd.nn().sigmoid(last.mmul(adj).mmul(w0).add(b0));
+                last = !sigmoid ? last.mmul(adj).mmul(w).add(b) : sd.nn().sigmoid(last.mmul(adj).mmul(w).add(b));
             }
         }
         identity = last;
