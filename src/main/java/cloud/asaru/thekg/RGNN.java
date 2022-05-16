@@ -22,13 +22,21 @@ import org.nd4j.linalg.ops.transforms.Transforms;
  *
  * @author Jae
  */
-public class RGNN {
-    boolean targetProbability;
+public class RGNN extends RelGNNBuilder implements RelGNN {
+    boolean sigmoid;
     MultiLayerConfiguration conff;
     int numNodes;
 MultiLayerNetwork nn;
-    public RGNN(INDArray relationShipAdjTensor, int numNodes, int layers, boolean learnable, boolean targetProbability) {
-this.targetProbability = targetProbability;
+
+    public RGNN() {
+    }
+
+    @Override
+    public RelGNN build(INDArray relationShipAdjTensor, int numNodes, int layers, boolean learnable, boolean sigmoid) {
+        return new RGNN(relationShipAdjTensor, numNodes, layers, learnable, sigmoid);
+    }
+    private RGNN(INDArray relationShipAdjTensor, int numNodes, int layers, boolean learnable, boolean sigmoid) {
+this.sigmoid = sigmoid;
         this.numNodes = numNodes;
         ListBuilder conf = new NeuralNetConfiguration.Builder()
                 .seed(123)
@@ -65,7 +73,7 @@ this.targetProbability = targetProbability;
                     conf = conf.layer(new DenseLayer.Builder()
                             .nIn(numNodes).nOut(numNodes)
                             .weightInit(WeightInit.XAVIER)
-                            .activation(targetProbability ? Activation.RELU : Activation.IDENTITY).build());
+                            .activation(sigmoid ? Activation.SIGMOID : Activation.IDENTITY).build());
                 }
             }
         }
@@ -84,16 +92,8 @@ this.targetProbability = targetProbability;
     /*
     * input is shape [feature index, node index], output is same
      */
-    public INDArray features(INDArray input) {
-        nn.setListeners(new ScoreIterationListener(190));   //Print the score (loss function value) every 20 iterations
-
-        return nn.output(Nd4j.createFromArray(new double[][]{input.toDoubleVector()}));
-    }
-
-    /*
-    * input is shape [feature index, node index], output is [node index]
-     */
-    public INDArray probability(INDArray input) {
+    @Override
+    public INDArray output(INDArray input) {
         nn.setListeners(new ScoreIterationListener(190));   //Print the score (loss function value) every 20 iterations
 
         return nn.output(Nd4j.createFromArray(new double[][]{input.toDoubleVector()}));
@@ -102,6 +102,7 @@ this.targetProbability = targetProbability;
     /*
     * input is shape [feature index, node index]
      */
+    @Override
     public void fit(INDArray input, INDArray output) {
         nn.fit(input, output);
     }

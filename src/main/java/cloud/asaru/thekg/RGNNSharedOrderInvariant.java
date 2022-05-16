@@ -31,14 +31,14 @@ import org.nd4j.weightinit.impl.XavierInitScheme;
  *
  * @author Jae
  */
-public class RGNNShared extends RelGNNBuilder implements RelGNN{
+public class RGNNSharedOrderInvariant extends RelGNNBuilder implements RelGNN{
 
-    public RGNNShared() {
+    public RGNNSharedOrderInvariant() {
     }
 
     @Override
     public RelGNN build(INDArray relationShipAdjTensor, int numNodes, int layers, boolean learnable, boolean sigmoid) {
-        return new RGNNShared(relationShipAdjTensor, numNodes, layers, sigmoid);
+        return new RGNNSharedOrderInvariant(relationShipAdjTensor, numNodes, layers, sigmoid);
     }
     int numNodes;
     SameDiff sd;
@@ -47,7 +47,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
     SDVariable sigmoid;
     SDVariable label;
 
-    private RGNNShared(INDArray relationShipAdjTensor, int numNodes, int layers, boolean sigmoid) {
+    private RGNNSharedOrderInvariant(INDArray relationShipAdjTensor, int numNodes, int layers, boolean sigmoid) {
         this.numNodes = numNodes;
         sd = SameDiff.create();
         //the shared wieghts
@@ -61,7 +61,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
                 /* the trained per-relationship linear combination of beta */
                 SDVariable alpha = sd.var("alpha_" + r + "_" + layer, Nd4j.ones(numNodes));
                 //w = alpha times beta
-                SDVariable w = beta.mmul(sd.math.diag(alpha));
+                SDVariable w = beta.mmul("w_" + r + "_" + layer, sd.math.diag(alpha));
                 SDVariable b = sd.zero("b_" + r + "_" + layer, 1, numNodes);
                 INDArray adjcencyMatrix = relationShipAdjTensor.tensorAlongDimension(r, 1, 2)
                         .castTo(DataType.FLOAT); //self loops;
@@ -131,6 +131,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
     /*
     * input is shape [feature index, node index], output is same
      */
+    @Override
     public INDArray output(INDArray input) {
         INDArray r = Nd4j.zeros(input.shape());
         for (int i = 0; i < input.shape()[0]; i++) {
@@ -144,6 +145,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
     /*
     * input is shape [feature index, node index]
      */
+    @Override
     public void fit(INDArray input, INDArray output) {
 
         for (int i = 0; i < input.shape()[0]; i++) {

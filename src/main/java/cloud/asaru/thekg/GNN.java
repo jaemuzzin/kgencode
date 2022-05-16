@@ -31,15 +31,8 @@ import org.nd4j.weightinit.impl.XavierInitScheme;
  *
  * @author Jae
  */
-public class RGNNShared extends RelGNNBuilder implements RelGNN{
+public class GNN {
 
-    public RGNNShared() {
-    }
-
-    @Override
-    public RelGNN build(INDArray relationShipAdjTensor, int numNodes, int layers, boolean learnable, boolean sigmoid) {
-        return new RGNNShared(relationShipAdjTensor, numNodes, layers, sigmoid);
-    }
     int numNodes;
     SameDiff sd;
     SDVariable softmax;
@@ -47,30 +40,25 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
     SDVariable sigmoid;
     SDVariable label;
 
-    private RGNNShared(INDArray relationShipAdjTensor, int numNodes, int layers, boolean sigmoid) {
+    public GNN(INDArray adj, int numNodes, int layers, boolean sigmoid) {
         this.numNodes = numNodes;
         sd = SameDiff.create();
         //the shared wieghts
         //Create input and label variables
         SDVariable in = sd.placeHolder("X", DataType.FLOAT, -1, numNodes);
-        SDVariable beta = sd.var("beta", new XavierInitScheme('c', numNodes, numNodes), DataType.FLOAT, numNodes, numNodes);
         label = sd.placeHolder("label", DataType.FLOAT, -1, numNodes);
         SDVariable last = in;
         for (int layer = 0; layer < layers; layer++) {
-            for (int r = 0; r < relationShipAdjTensor.shape()[0]; r++) {
-                /* the trained per-relationship linear combination of beta */
-                SDVariable alpha = sd.var("alpha_" + r + "_" + layer, Nd4j.ones(numNodes));
-                //w = alpha times beta
-                SDVariable w = beta.mmul(sd.math.diag(alpha));
-                SDVariable b = sd.zero("b_" + r + "_" + layer, 1, numNodes);
-                INDArray adjcencyMatrix = relationShipAdjTensor.tensorAlongDimension(r, 1, 2)
-                        .castTo(DataType.FLOAT); //self loops;
-                INDArray deg = InvertMatrix.invert(Nd4j.diag(adjcencyMatrix.sum(1)), false);//Transforms.pow(Nd4j.diag(adjcencyMatrix.sum(1)), -.5);
-                adjcencyMatrix = adjcencyMatrix.add(Nd4j.eye(numNodes));
-                INDArray normalizedadjcencyMatrix = deg.mul(adjcencyMatrix);
-                SDVariable adj = sd.constant("A_" + r + "_" + layer, normalizedadjcencyMatrix);
-                last = !sigmoid ? last.mmul(adj).mmul(w).add(b) : sd.nn().sigmoid(last.mmul(adj).mmul(w).add(b));
-            }
+            //w = alpha times beta
+            SDVariable w = sd.var("w_" + layer, new XavierInitScheme('c', numNodes, numNodes), DataType.FLOAT, numNodes, numNodes);
+            SDVariable b = sd.zero("b_" + layer, 1, numNodes);
+            INDArray adjcencyMatrix = adj
+                    .castTo(DataType.FLOAT); 
+            INDArray deg = InvertMatrix.invert(Nd4j.diag(adjcencyMatrix.sum(1)), false);//Transforms.pow(Nd4j.diag(adjcencyMatrix.sum(1)), -.5);
+            adjcencyMatrix = adjcencyMatrix.add(Nd4j.eye(numNodes));
+            INDArray normalizedadjcencyMatrix = deg.mul(adjcencyMatrix);
+            SDVariable normadj = sd.constant("A_" + layer, normalizedadjcencyMatrix);
+            last = !sigmoid ? last.mmul(normadj).mmul(w).add(b) : sd.nn().sigmoid(last.mmul(normadj).mmul(w).add(b));
         }
         identity = last;
 
