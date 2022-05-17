@@ -1,30 +1,15 @@
 package cloud.asaru.thekg;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import org.deeplearning4j.datasets.iterator.impl.MnistDataSetIterator;
-import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
-import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
-import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.nd4j.autodiff.listeners.Listener;
 import org.nd4j.autodiff.listeners.impl.ScoreListener;
 import org.nd4j.autodiff.samediff.SDVariable;
 import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.autodiff.samediff.TrainingConfig;
-import org.nd4j.evaluation.classification.Evaluation;
 import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.cpu.nativecpu.bindings.Nd4jCpu;
 import org.nd4j.linalg.dataset.DataSet;
-import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.inverse.InvertMatrix;
 import org.nd4j.linalg.learning.config.Adam;
-import org.nd4j.linalg.ops.transforms.Transforms;
 import org.nd4j.weightinit.impl.XavierInitScheme;
 
 /**

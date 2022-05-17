@@ -2,7 +2,6 @@
 package graphtools;
 
 import java.util.stream.IntStream;
-import org.graalvm.compiler.nodes.NodeView;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.nd4j.linalg.api.ndarray.INDArray;

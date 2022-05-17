@@ -9,6 +9,8 @@ import org.nd4j.linalg.api.ndarray.INDArray;
  */
 public interface RelGNN {
 
+    INDArray getMultiRelAdjacencyTensor();
+    void setMultiRelAdjacencyTensor(INDArray t);
     /*
      * input is shape [feature index, node index], output is same
      */
