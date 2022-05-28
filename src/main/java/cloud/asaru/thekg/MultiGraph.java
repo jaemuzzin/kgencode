@@ -1,25 +1,16 @@
 package cloud.asaru.thekg;
 
 import graphs.FlattenedGraph;
-import graphs.MappedGraph;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;
-import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.jgrapht.graph.SimpleGraph;
@@ -59,13 +50,18 @@ public class MultiGraph {
         return graph;
     }
 
+    public long getRelationCount() {
+        return graph.edgeSet().stream().mapToInt(e -> e.r).distinct().count();
+    }
+
+    public long getNodeCount() {
+        return getSequentialIds().size();
+    }
     /*
     * returns a new graph where nodes are 0 to N
      */
     public MultiGraph toSequentialIdGraph() {
-        List<Integer> nodes = new ArrayList<>();
-        //only add nodes with edges
-        nodes.addAll(graph.edgeSet().stream().flatMapToInt(e -> Arrays.stream(new int[]{e.h, e.t})).distinct().boxed().collect(Collectors.toList()));
+        List<Integer> nodes = getSequentialIds();
         SimpleDirectedGraph<Integer, Triple> inner = new SimpleDirectedGraph<>(Triple.class);
         IntStream.range(0, nodes.size()).forEach(i -> inner.addVertex(i));
 
@@ -73,6 +69,16 @@ public class MultiGraph {
             inner.addEdge(nodes.indexOf(e.h), nodes.indexOf(e.t), new Triple(nodes.indexOf(e.h), e.r, nodes.indexOf(e.t)));
         });
         return new MultiGraph(inner);
+    }
+
+    /*
+    * returns the origal ids referenced by the sequential ids in toSequentialIdGraph
+     */
+    public List<Integer> getSequentialIds() {
+        List<Integer> nodes = new ArrayList<>();
+        //only add nodes with edges
+        nodes.addAll(graph.edgeSet().stream().flatMapToInt(e -> Arrays.stream(new int[]{e.h, e.t})).distinct().boxed().collect(Collectors.toList()));
+        return nodes;
     }
 
     public INDArray getMultiRelAdjacencyTensor(int numNodes, int numRels) {
@@ -121,11 +127,11 @@ public class MultiGraph {
     }
 
     /*
-    [nodes, feature]
+    [feature, nodes]
      */
-    public static INDArray getSpectralNodeCoordsSimpleGraph(SimpleGraph<Integer, DefaultEdge> graph, int numRels, int dims) {
+    public INDArray getSpectralNodeCoordsSimpleGraph(int dims) {
 
-        INDArray r = Nd4j.zeros(graph.vertexSet().size(), dims);
+        INDArray r = Nd4j.zeros(dims, graph.vertexSet().size());
         INDArray laplacian = Nd4j.zeros(graph.vertexSet().size(), graph.vertexSet().size());
         //diag
         IntStream.range(0, graph.vertexSet().size()).forEach(i -> laplacian.putScalar(new int[]{i, i}, graph.edgesOf(i).size()));
@@ -142,7 +148,7 @@ public class MultiGraph {
         for (int n = 0; n < graph.vertexSet().size(); n++) {
             for (int d = 0; d < dims; d++) {
                 //this nodes value in dimension d is the node's value in fidelr vector + d
-                r.putScalar(new int[]{n, d}, eig[1].getDouble(feidlerIndex + d, n));
+                r.putScalar(new int[]{d, n}, eig[1].getDouble(feidlerIndex + d, n));
             }
         }
         return r;

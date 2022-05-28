@@ -11,6 +11,7 @@ import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.inverse.InvertMatrix;
 import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.weightinit.impl.XavierInitScheme;
+import extractors.FeatureExtractor;
 
 /**
  *
@@ -22,8 +23,8 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
     }
 
     @Override
-    public RelGNN build(INDArray relationShipAdjTensor, int numNodes, int layers, boolean learnable, boolean sigmoid) {
-        return new RGNNShared(relationShipAdjTensor, numNodes, layers, sigmoid);
+    public RelGNN build(INDArray relationShipAdjTensor, int numNodes, int dims, int layers, boolean learnable, boolean sigmoid, FeatureExtractor featureExtractor) {
+        return new RGNNShared(relationShipAdjTensor, numNodes, dims, layers, sigmoid, featureExtractor);
     }
 
     @Override
@@ -47,52 +48,65 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
         }
     }
     int numNodes;
+    int dims;
     SameDiff sd;
     SDVariable softmax;
     SDVariable identity;
     SDVariable sigmoid;
     SDVariable label;
-    SDVariable graphlabel;
     INDArray adjcencyTensor;
     int layers;
 
-    protected RGNNShared(INDArray relationShipAdjTensor, int numNodes, int layers, boolean sigmoid) {
+    protected RGNNShared(INDArray relationShipAdjTensor, int numNodes, int dims, int layers, boolean sigmoid, FeatureExtractor featureExtractor) {
         this.adjcencyTensor = relationShipAdjTensor;
         this.numNodes = numNodes;
         this.layers = layers;
+        this.dims = dims;
         sd = SameDiff.create();
         //the shared wieghts
         //Create input and label variables
-        SDVariable in = sd.placeHolder("X", DataType.FLOAT, -1, numNodes);
-        SDVariable beta = sd.var("beta", new XavierInitScheme('c', numNodes, numNodes), DataType.FLOAT, numNodes, numNodes);
-        label = sd.placeHolder("label", DataType.FLOAT, -1, numNodes);
-        graphlabel = sd.placeHolder("graphlabel", DataType.FLOAT, -1, 2);
-        SDVariable last = in;
+        SDVariable in = sd.placeHolder("input", DataType.FLOAT, -1, numNodes);
+        SDVariable X = featureExtractor.extract(in);
+        SDVariable beta = sd.var("beta", new XavierInitScheme('c', dims, dims), DataType.FLOAT, dims, dims);
+        label = sd.placeHolder("label", DataType.FLOAT, 2, 1);
+        SDVariable last = X;
         for (int layer = 0; layer < layers; layer++) {
             for (int r = 0; r < relationShipAdjTensor.shape()[0]; r++) {
                 /* the trained per-relationship linear combination of beta */
-                SDVariable alpha = sd.var("alpha_" + r + "_" + layer, Nd4j.ones(numNodes));
+                SDVariable alpha = sd.var("alpha_" + r + "_" + layer, Nd4j.ones(dims));
                 //w = alpha times beta
                 SDVariable w = beta.mmul(sd.math.diag(alpha));
-                SDVariable b = sd.zero("b_" + r + "_" + layer, 1, numNodes);
+                SDVariable b = sd.zero("b_" + r + "_" + layer, 1, dims);
                 INDArray adjcencyMatrix = relationShipAdjTensor.tensorAlongDimension(r, 1, 2)
                         .castTo(DataType.FLOAT); //self loops;
                 INDArray deg = InvertMatrix.invert(Nd4j.diag(adjcencyMatrix.sum(1)), false);//Transforms.pow(Nd4j.diag(adjcencyMatrix.sum(1)), -.5);
                 adjcencyMatrix = adjcencyMatrix.add(Nd4j.eye(numNodes));
                 INDArray normalizedadjcencyMatrix = deg.mul(adjcencyMatrix);
                 SDVariable adj = sd.constant("A_" + r + "_" + layer, normalizedadjcencyMatrix);
-                last = !sigmoid ? last.mmul(adj).mmul(w).add(b) : sd.nn().sigmoid(last.mmul(adj).mmul(w).add(b));
+                last = !sigmoid ? w.add(b).mmul(last.mmul(adj)) : sd.nn().sigmoid(w.add(b).mmul(last.mmul(adj)));
             }
         }
         identity = last;
-        
-        SDVariable graphCombiner = sd.var("wg", new XavierInitScheme('c', numNodes, 2), DataType.FLOAT, numNodes, 2);
-        SDVariable graphCombinerBias = sd.zero("wg_b", 1, 2);
-        SDVariable graphProbability = sd.nn().softmax(last.mmul(graphCombiner).add(graphCombinerBias));
+        //DxN times Nx2 = (L1=Dx2)
+        SDVariable graphCombinerLayer1 = sd.var("wg1", new XavierInitScheme('c', numNodes, 2), DataType.FLOAT, numNodes, 2);
+        SDVariable graphCombinerBias1 = sd.zero("wgb1", numNodes, 1);
+        //2xD times Dx2(L1) = 2x2
+        SDVariable graphCombinerLayer2 = sd.var("wg2", new XavierInitScheme('c', 2, dims), DataType.FLOAT, 2, dims);
+        SDVariable graphCombinerBias2 = sd.zero("wgb2", 2, 1);
+        //2x2 times 2x1 = 2x1
+        SDVariable graphCombinerLayer3 = sd.var("wg3", new XavierInitScheme('c', 2, 1), DataType.FLOAT, 2, 1);
+        SDVariable graphCombinerBias3 = sd.zero("wgb3", 2, 1);
+        SDVariable graphProbability = sd.nn().softmax( 
+                //(L2x(XxL1))xL3
+                graphCombinerLayer2.add(graphCombinerBias2).mmul(
+                        identity.mmul(graphCombinerLayer1.add(graphCombinerBias1))
+                ).mmul(
+                        graphCombinerLayer3.add(graphCombinerBias3)
+                )
+        );
         //Define loss function:
-        SDVariable lossPerNode = sd.math.squaredDifference(identity, label).mean();
-        SDVariable lossForGraph = sd.loss.softmaxCrossEntropy(graphlabel, graphProbability, null);
-        sd.setLossVariables(lossPerNode, lossForGraph);
+        SDVariable lossForGraph = sd.loss.softmaxCrossEntropy(label, graphProbability, null);
+        sd.setLossVariables(lossForGraph, lossForGraph);
 
         //Create and set the training configuration
         double learningRate = 1e-3;
@@ -145,7 +159,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
     }
 
     /*
-    * input is shape [feature index, node index], output is same
+    * input is shape [feature index, node index], output is [2,1]
      */
     public INDArray output(INDArray input) {
         INDArray r = Nd4j.zeros(input.shape());

@@ -1,28 +1,12 @@
 package cloud.asaru.thekg;
 
-import graphs.FlattenedGraph;
-import graphs.MappedGraph;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import org.jgrapht.Graph;
-import org.jgrapht.Graphs;
-import org.jgrapht.graph.AsSubgraph;
-import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleDirectedGraph;
-import org.jgrapht.graph.SimpleGraph;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.eigen.Eigen;
-import org.nd4j.linalg.factory.Nd4j;
 
 /**
  *

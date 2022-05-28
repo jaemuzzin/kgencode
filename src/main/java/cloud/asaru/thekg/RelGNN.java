@@ -12,12 +12,12 @@ public interface RelGNN {
     INDArray getMultiRelAdjacencyTensor();
     void setMultiRelAdjacencyTensor(INDArray t);
     /*
-     * input is shape [feature index, node index], output is same
+     * input is shape [feature index, node index], output is [2,1]
      */
     INDArray output(INDArray input);
 
     /*
-     * input is shape [feature index, node index]
+     * input is shape [feature index, node index], output is [2,1]
      */
     void fit(INDArray input, INDArray output);
 
