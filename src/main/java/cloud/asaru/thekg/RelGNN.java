@@ -9,17 +9,15 @@ import org.nd4j.linalg.api.ndarray.INDArray;
  */
 public interface RelGNN {
 
-    INDArray getMultiRelAdjacencyTensor();
-    void setMultiRelAdjacencyTensor(INDArray t);
     /*
      * input is shape [feature index, node index], output is [2,1]
      */
-    INDArray output(INDArray input);
+    INDArray output(INDArray input, INDArray relationShipAdjTensor);
 
     /*
      * input is shape [feature index, node index], output is [2,1]
      */
-    void fit(INDArray input, INDArray output);
+    void fit(INDArray input, INDArray output, INDArray relationShipAdjTensor);
 
     
 }

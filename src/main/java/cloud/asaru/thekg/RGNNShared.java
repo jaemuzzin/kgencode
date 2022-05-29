@@ -23,30 +23,10 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
     }
 
     @Override
-    public RelGNN build(INDArray relationShipAdjTensor, int numNodes, int dims, int layers, boolean learnable, boolean sigmoid, FeatureExtractor featureExtractor) {
-        return new RGNNShared(relationShipAdjTensor, numNodes, dims, layers, sigmoid, featureExtractor);
+    public RelGNN build(int numRels, int numNodes, int dims, int layers, boolean learnable, boolean sigmoid, FeatureExtractor featureExtractor) {
+        return new RGNNShared(numRels, numNodes, dims, layers, sigmoid, featureExtractor);
     }
 
-    @Override
-    public INDArray getMultiRelAdjacencyTensor() {
-        return adjcencyTensor;
-    }
-
-    @Override
-    public void setMultiRelAdjacencyTensor(INDArray t) {
-        if(!t.equalShapes(this.adjcencyTensor)) throw new IllegalArgumentException("Tried to set adjacency matrix to different shape:"+t.shapeInfoToString());
-        this.adjcencyTensor = t;
-        for (int layer = 0; layer < layers; layer++) {
-            for (int r = 0; r < t.shape()[0]; r++) {
-                INDArray adjcencyMatrix = t.tensorAlongDimension(r, 1, 2)
-                        .castTo(DataType.FLOAT); //self loops;
-                INDArray deg = InvertMatrix.invert(Nd4j.diag(adjcencyMatrix.sum(1)), false);//Transforms.pow(Nd4j.diag(adjcencyMatrix.sum(1)), -.5);
-                adjcencyMatrix = adjcencyMatrix.add(Nd4j.eye(numNodes));
-                INDArray normalizedadjcencyMatrix = deg.mul(adjcencyMatrix);
-                sd.constant("A_" + r + "_" + layer, normalizedadjcencyMatrix);
-            }
-        }
-    }
     int numNodes;
     int dims;
     SameDiff sd;
@@ -54,35 +34,30 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
     SDVariable identity;
     SDVariable sigmoid;
     SDVariable label;
-    INDArray adjcencyTensor;
+    int numRels;
     int layers;
 
-    protected RGNNShared(INDArray relationShipAdjTensor, int numNodes, int dims, int layers, boolean sigmoid, FeatureExtractor featureExtractor) {
-        this.adjcencyTensor = relationShipAdjTensor;
+    protected RGNNShared(int numRels, int numNodes, int dims, int layers, boolean sigmoid, FeatureExtractor featureExtractor) {
+        this.numRels = numRels;
         this.numNodes = numNodes;
         this.layers = layers;
         this.dims = dims;
         sd = SameDiff.create();
         //the shared wieghts
         //Create input and label variables
-        SDVariable in = sd.placeHolder("input", DataType.FLOAT, -1, numNodes);
+        SDVariable in = sd.placeHolder("input", DataType.FLOAT, numRels, numNodes);
         SDVariable X = featureExtractor.extract(in);
         SDVariable beta = sd.var("beta", new XavierInitScheme('c', dims, dims), DataType.FLOAT, dims, dims);
         label = sd.placeHolder("label", DataType.FLOAT, 2, 1);
         SDVariable last = X;
         for (int layer = 0; layer < layers; layer++) {
-            for (int r = 0; r < relationShipAdjTensor.shape()[0]; r++) {
+            for (int r = 0; r < numRels; r++) {
                 /* the trained per-relationship linear combination of beta */
                 SDVariable alpha = sd.var("alpha_" + r + "_" + layer, Nd4j.ones(dims));
                 //w = alpha times beta
                 SDVariable w = beta.mmul(sd.math.diag(alpha));
                 SDVariable b = sd.zero("b_" + r + "_" + layer, 1, dims);
-                INDArray adjcencyMatrix = relationShipAdjTensor.tensorAlongDimension(r, 1, 2)
-                        .castTo(DataType.FLOAT); //self loops;
-                INDArray deg = InvertMatrix.invert(Nd4j.diag(adjcencyMatrix.sum(1)), false);//Transforms.pow(Nd4j.diag(adjcencyMatrix.sum(1)), -.5);
-                adjcencyMatrix = adjcencyMatrix.add(Nd4j.eye(numNodes));
-                INDArray normalizedadjcencyMatrix = deg.mul(adjcencyMatrix);
-                SDVariable adj = sd.constant("A_" + r + "_" + layer, normalizedadjcencyMatrix);
+                SDVariable adj = sd.placeHolder("A_" + r + "_" + layer, DataType.FLOAT, numNodes, numNodes);
                 last = !sigmoid ? w.add(b).mmul(last.mmul(adj)) : sd.nn().sigmoid(w.add(b).mmul(last.mmul(adj)));
             }
         }
@@ -161,7 +136,8 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
     /*
     * input is shape [feature index, node index], output is [2,1]
      */
-    public INDArray output(INDArray input) {
+    @Override
+    public INDArray output(INDArray input, INDArray relationShipAdjTensor) {
         INDArray r = Nd4j.zeros(input.shape());
         for (int i = 0; i < input.shape()[0]; i++) {
             INDArray inp = input.tensorAlongDimension(i, 1, 2);
@@ -172,30 +148,26 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
     }
 
     /*
-    * input is shape [feature index, node index]
+    * input is shape [feature index, node index], relshipTensor: [rels, nodes, nodes], output is [2,1]
      */
-    public void fit(INDArray input, INDArray output) {
-
+    @Override
+    public void fit(INDArray input, INDArray output, INDArray relationShipAdjTensor) {
+        for (int layer = 0; layer < layers; layer++) {
+            for (int r = 0; r < numRels; r++) {
+                INDArray adjcencyMatrix = relationShipAdjTensor.tensorAlongDimension(r, 1, 2)
+                        .castTo(DataType.FLOAT); //self loops;
+                INDArray deg = Nd4j.diag(adjcencyMatrix.sum(1));//Transforms.pow(Nd4j.diag(adjcencyMatrix.sum(1)), -.5);
+                adjcencyMatrix = adjcencyMatrix.add(Nd4j.eye(numNodes));
+                INDArray normalizedadjcencyMatrix = deg.mul(adjcencyMatrix);
+                sd.getVariable("A_" + r + "_" + layer).setArray(normalizedadjcencyMatrix);
+            }
+        }
         for (int i = 0; i < input.shape()[0]; i++) {
             INDArray inp = input.tensorAlongDimension(i, 1);
             INDArray outp = output.tensorAlongDimension(i, 1);
             sd.getVariable("X").setArray(inp);
             DataSet ds = new DataSet(input, outp);
-            sd.fit(ds, new ScoreListener(200));
-        }
-    }
-    /*
-    * input is shape [feature index, node index]
-    * output is shape [2]
-     */
-    public void fitGraph(INDArray input, INDArray output) {
-
-        for (int i = 0; i < input.shape()[0]; i++) {
-            INDArray inp = input.tensorAlongDimension(i, 1);
-            INDArray outp = output.tensorAlongDimension(i, 1, 2);
-            sd.getVariable("X").setArray(inp);
-            DataSet ds = new DataSet(input, outp);
-            sd.fit(ds, new ScoreListener(200));
+            sd.fit(ds, new ScoreListener(20));
         }
     }
 }

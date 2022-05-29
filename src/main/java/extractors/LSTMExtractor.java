@@ -1,8 +1,8 @@
-
 package extractors;
 
 import org.nd4j.autodiff.samediff.SDVariable;
 import org.nd4j.linalg.api.buffer.DataType;
+import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.impl.layers.recurrent.config.LSTMActivations;
 import org.nd4j.linalg.api.ops.impl.layers.recurrent.config.LSTMDataFormat;
 import org.nd4j.linalg.api.ops.impl.layers.recurrent.config.LSTMDirectionMode;
@@ -16,6 +16,7 @@ import org.nd4j.linalg.factory.Nd4j;
  * @author Jae
  */
 public class LSTMExtractor implements FeatureExtractor {
+
     private int finalDimension;
     private int startDimension;
     private int numNodes;
@@ -25,58 +26,63 @@ public class LSTMExtractor implements FeatureExtractor {
         this.startDimension = startDimension;
         this.numNodes = numNodes;
     }
-    
+
     /*
     * start has shape startDimensions x numNodes
-    */
+     */
     @Override
     public SDVariable extract(SDVariable start) {
-        //todo: change start to indarray with shape [miniBatchSize(numNodes), vectorSize (1), timeSeriesLength(start dimensions)]
-        int numUnits = 10;
-         SDVariable cLast = start.getSameDiff().var("cLast", Nd4j.zeros(DataType.FLOAT, 1, 10));
-            SDVariable yLast = start.getSameDiff().var("yLast", Nd4j.zeros(DataType.FLOAT, 1, 10));
+        if (start.getShape()[0] != startDimension) {
+            throw new IllegalArgumentException("shape must be startDimensions x numNodes");
+        }
+        if (start.getShape()[1] != numNodes) {
+            throw new IllegalArgumentException("shape must be startDimensions x numNodes");
+        }
+        int numUnits = 7;
+        //change start to indarray with shape [timeSeriesLength(start dimensions), miniBatchSize(numNodes), vectorSize (1)]
+        SDVariable in = start.getSameDiff().expandDims(start, 2);
+        SDVariable cLast = start.getSameDiff().var("cLast", Nd4j.zeros(DataType.FLOAT, 1, 10));
+        SDVariable yLast = start.getSameDiff().var("yLast", Nd4j.zeros(DataType.FLOAT, 1, 10));
 
-            LSTMLayerConfig c = LSTMLayerConfig.builder()
-                    .lstmdataformat(LSTMDataFormat.NTS)
-                    .directionMode(LSTMDirectionMode.FWD)
-                    .gateAct(LSTMActivations.SIGMOID)
-                    .cellAct(LSTMActivations.TANH)
-                    .outAct(LSTMActivations.TANH)
-                    .retFullSequence(true)
-                    .retLastC(true)
-                    .retLastH(true)
-                    .build();
+        LSTMLayerConfig c = LSTMLayerConfig.builder()
+                .lstmdataformat(LSTMDataFormat.TNS)
+                .directionMode(LSTMDirectionMode.FWD)
+                .gateAct(LSTMActivations.SIGMOID)
+                .cellAct(LSTMActivations.TANH)
+                .outAct(LSTMActivations.TANH)
+                .retFullSequence(true)
+                .retLastC(true)
+                .retLastH(true)
+                .build();
 
-            LSTMLayerOutputs outputs = new LSTMLayerOutputs(start.getSameDiff().rnn.lstmLayer(
-                    start, cLast, yLast, null,
-                    LSTMLayerWeights.builder()
-                            .weights(start.getSameDiff().var("weights", Nd4j.rand(DataType.FLOAT, 1, 4 * numUnits)))
-                            .rWeights(start.getSameDiff().var("rWeights", Nd4j.rand(DataType.FLOAT, numUnits, 4 * numUnits)))
-                            .peepholeWeights(start.getSameDiff().var("inputPeepholeWeights", Nd4j.rand(DataType.FLOAT, 3 * numUnits)))
-                            .bias(start.getSameDiff().var("bias", Nd4j.rand(DataType.FLOAT, 4 * numUnits)))
-                            .build(),
-                    c), c);
-
+        LSTMLayerOutputs outputs = new LSTMLayerOutputs(start.getSameDiff().rnn.lstmLayer(
+                in, cLast, yLast, null,
+                LSTMLayerWeights.builder()
+                        .weights(start.getSameDiff().var("weights", Nd4j.rand(DataType.FLOAT, 1, 4 * numUnits)))
+                        .rWeights(start.getSameDiff().var("rWeights", Nd4j.rand(DataType.FLOAT, numUnits, 4 * numUnits)))
+                        .peepholeWeights(start.getSameDiff().var("inputPeepholeWeights", Nd4j.rand(DataType.FLOAT, 3 * numUnits)))
+                        .bias(start.getSameDiff().var("bias", Nd4j.rand(DataType.FLOAT, 4 * numUnits)))
+                        .build(),
+                c), c);
 
 //           Behaviour with default settings: 3d (time series) input with shape
-//          [miniBatchSize, vectorSize, timeSeriesLength] -> 2d output [miniBatchSize, vectorSize]
-            SDVariable layer0 = outputs.getOutput();
+//          [timeSeriesLength, miniBatchSize, vectorSize] -> 2d output [miniBatchSize, vectorSize]
+//          [startDims, Nodes, 1] -> 2d output [startDims, Nodes]
+        SDVariable layer0 = outputs.getOutput();
 
-            SDVariable layer1 = layer0.mean(1);
+        SDVariable layer1 = layer0.mean(1);
 
-            SDVariable w1 = start.getSameDiff().var("w1", Nd4j.rand(DataType.FLOAT, numUnits, finalDimension));
-            SDVariable b1 = start.getSameDiff().var("b1", Nd4j.rand(DataType.FLOAT, finalDimension));
+        SDVariable w1 = start.getSameDiff().var("w1", Nd4j.rand(DataType.FLOAT, numUnits, finalDimension));
+        SDVariable b1 = start.getSameDiff().var("b1", Nd4j.rand(DataType.FLOAT, finalDimension));
 
+        SDVariable out = start.getSameDiff().nn.softmax("out", layer1.mmul(w1).add(b1));
 
-            SDVariable out = start.getSameDiff().nn.softmax("out", layer1.mmul(w1).add(b1));
-            
-            //todo change out[miniBatchSize(numNodes), vectorSize(finalDimension)] to indarray wiht shape [finalDimension x numNodes]
-            return out;
+        return out;
     }
 
     @Override
     public int getDimensions() {
         return finalDimension;
     }
-    
+
 }

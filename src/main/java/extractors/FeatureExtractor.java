@@ -1,4 +1,4 @@
-
+    
 package extractors;
 
 import org.nd4j.autodiff.samediff.SDVariable;
