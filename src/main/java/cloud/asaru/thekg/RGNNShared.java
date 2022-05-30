@@ -61,7 +61,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
                 SDVariable w = beta.mmul(sd.math.diag(alpha));
                 SDVariable b = sd.zero("b_" + r + "_" + layer, 1, numNodes);
                 SDVariable adj = sd.constant("A_" + r + "_" + layer, Nd4j.zeros(numNodes, numNodes));
-                last = !sigmoid ? w.mmul(last.mmul(adj)).add(b) : sd.nn().sigmoid(w.mmul(last.mmul(adj)).add(b));
+                last = !sigmoid ? w.mmul(last.mmul(adj)).add(b) : sd.nn().relu(w.mmul(last.mmul(adj)).add(b), 0);
             }
         }
         identity = sd.concat(1, last, rt);
@@ -88,17 +88,17 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
         SDVariable w4 = sd.var("cw4", new XavierInitScheme('c', 2, 4), DataType.FLOAT, 1, 4);
         SDVariable wb4 = sd.zero("cwb4", 1, 2);
         
-        SDVariable combined = sd.nn.sigmoid(w4.mmul(
-                        sd.nn.sigmoid(
-                                sd.nn.sigmoid(
-                                        sd.nn.sigmoid(
+        SDVariable combined = sd.nn.relu(w4.mmul(
+                        sd.nn.relu(
+                                sd.nn.relu(
+                                        sd.nn.relu(
                                                 w2.mmul(
-                                                        sd.nn.sigmoid(
-                                                                identity.mmul(w0).add(wb0)
-                                                                )).add(wb2)
-                                                ).mmul(w1).add(wb1)
-                                        ).mmul(w3)
-                                )).add(wb4));
+                                                        sd.nn.relu(
+                                                                identity.mmul(w0).add(wb0), 0
+                                                                )).add(wb2), 0
+                                                ).mmul(w1).add(wb1), 0
+                                        ).mmul(w3), 0
+                                )).add(wb4), 0);
         SDVariable output = sd.nn.softmax("output", combined);
         SDVariable lossForGraph = sd.loss.softmaxCrossEntropy(label, combined, null);
         sd.setLossVariables(lossForGraph);
