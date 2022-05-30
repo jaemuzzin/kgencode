@@ -37,7 +37,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
     SDVariable label;
     int numRels;
     int layers;
-
+    Triple target;
     protected RGNNShared(int numRels, int numNodes, int dims, int layers, boolean sigmoid, FeatureExtractor featureExtractor) {
         this.numRels = numRels;
         this.numNodes = numNodes;
@@ -47,6 +47,8 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
         //the shared wieghts
         //Create input and label variables
         SDVariable in = sd.placeHolder("input", DataType.FLOAT, numRels, numNodes);
+        //one-hot vector of relationship identity
+        SDVariable rt = sd.constant("rt", Nd4j.zeros(dims, numRels));
         SDVariable X = featureExtractor.extract(in);
         SDVariable beta = sd.var("beta", new XavierInitScheme('c', dims, dims), DataType.FLOAT, dims, dims);
         label = sd.placeHolder("label", DataType.FLOAT, 2, 1);
@@ -62,26 +64,33 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
                 last = !sigmoid ? w.add(b).mmul(last.mmul(adj)) : sd.nn().sigmoid(w.add(b).mmul(last.mmul(adj)));
             }
         }
-        identity = last;
-        //DxN times Nx2 = (L1=Dx2)
-        SDVariable graphCombinerLayer1 = sd.var("wg1", new XavierInitScheme('c', numNodes, 2), DataType.FLOAT, numNodes, 2);
-        SDVariable graphCombinerBias1 = sd.zero("wgb1", numNodes, 1);
-        //2xD times Dx2(L1) = 2x2
-        SDVariable graphCombinerLayer2 = sd.var("wg2", new XavierInitScheme('c', 2, dims), DataType.FLOAT, 2, dims);
-        SDVariable graphCombinerBias2 = sd.zero("wgb2", 2, 1);
-        //2x2 times 2x1 = 2x1
-        SDVariable graphCombinerLayer3 = sd.var("wg3", new XavierInitScheme('c', 2, 1), DataType.FLOAT, 2, 1);
-        SDVariable graphCombinerBias3 = sd.zero("wgb3", 2, 1);
-        SDVariable graphProbability = sd.nn().softmax("output",
-                //(L2x(XxL1))xL3
-                graphCombinerLayer2.add(graphCombinerBias2).mmul(
-                        identity.mmul(graphCombinerLayer1.add(graphCombinerBias1))
-                ).mmul(
-                        graphCombinerLayer3.add(graphCombinerBias3)
-                )
-        );
+        identity = sd.concat(1, last, rt);
+        
+        //FF layers:
+        //1 - inputs: DxN+R, outputs: DxN
+        //2 - inputs: DxN, outputs 4x4:
+        //3 - inputs: 4x4, outputs 2X1:
+        
+        
+        //DxN+R times W0(N+R, N) = DxN
+        //(W2(4, D) times DxN) times W1(N, 4) = 4x4
+        // W4(2,4) timex (4x4 times W3(4,1)) = 2x1
+        SDVariable w0 = sd.var("w0", new XavierInitScheme('c', numNodes + numRels, numNodes), DataType.FLOAT, numNodes + numRels, numNodes);
+        SDVariable wb0 = sd.zero("wb0", numNodes + numRels, 1);
+        
+        SDVariable w1 = sd.var("w1", new XavierInitScheme('c', numNodes, 4), DataType.FLOAT, numNodes, 4);
+        SDVariable wb1 = sd.zero("wb1", numNodes, 1);
+        
+        SDVariable w2 = sd.var("w2", new XavierInitScheme('c', 4, dims), DataType.FLOAT, 4, dims);
+        SDVariable wb2 = sd.zero("wb2", 4, 1);
+        
+        SDVariable w3 = sd.var("w3", new XavierInitScheme('c', 4, 1), DataType.FLOAT, 4, 1);
+        SDVariable w4 = sd.var("w4", new XavierInitScheme('c', 2, 4), DataType.FLOAT, 2, 4);
+        SDVariable wb4 = sd.zero("wb4", 2, 1);
+        
+        SDVariable combined = w4.add(wb4).mmul(w2.add(wb2).mmul(identity.mmul(w0.add(wb0))).mmul(w1.add(wb1)).mmul(w3));
         //Define loss function:
-        SDVariable lossForGraph = sd.loss.softmaxCrossEntropy(label, graphProbability, null);
+        SDVariable lossForGraph = sd.loss.softmaxCrossEntropy(label, combined, null);
         sd.setLossVariables(lossForGraph, lossForGraph);
 
         //Create and set the training configuration
@@ -94,51 +103,14 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
                 .build();
 
         sd.setTrainingConfig(config);
-        /*
-        int batchSize = 32;
-        DataSetIterator trainData = new MnistDataSetIterator(batchSize, true, 12345);
-        DataSetIterator testData = new MnistDataSetIterator(batchSize, false, 12345);
-
-        //Perform training for 2 epochs
-        int numEpochs = 2;
-        sd.fit(trainData, numEpochs);
-
-        //Evaluate on test set:
-        String outputVariable = "softmax";
-        Evaluation evaluation = new Evaluation();
-        sd.evaluate(testData, outputVariable, evaluation);
-
-        //Print evaluation statistics:
-        System.out.println(evaluation.stats());
-
-        //Save the trained network for inference - FlatBuffers format
-        File saveFileForInference = new File("sameDiffExampleInference.fb");
-        try {
-            sd.asFlatFile(saveFileForInference);
-        } catch (IOException ex) {
-            Logger.getLogger(RGNNShared.class.getName()).log(Level.SEVERE, null, ex);
-        }
-
-        SameDiff loadedForInference;
-        loadedForInference = SameDiff.fromFlatFile(saveFileForInference);
-
-        //Perform inference on restored network
-        INDArray example = new MnistDataSetIterator(1, false, 12345).next().getFeatures();
-        loadedForInference.getVariable("input").setArray(example);
-        INDArray output = loadedForInference.getVariable("softmax").eval();
-
-        System.out.println("-----------------------");
-        System.out.println(example.reshape(28, 28));
-        System.out.println("Output probabilities: " + output);
-        System.out.println("Predicted class: " + output.argMax().getInt(0));
-         */
+        
     }
 
     /*
     * input is shape [feature index, node index], output is [2,1]
      */
     @Override
-    public INDArray output(INDArray input, INDArray relationShipAdjTensor) {
+    public INDArray output(INDArray input, INDArray relationShipAdjTensor, Triple target) {
         for (int layer = 0; layer < layers; layer++) {
             for (int r = 0; r < numRels; r++) {
                 INDArray adjcencyMatrix = relationShipAdjTensor.tensorAlongDimension(r, 1, 2)
@@ -149,6 +121,11 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
                 sd.getVariable("A_" + r + "_" + layer).setArray(normalizedadjcencyMatrix);
             }
         }
+
+        INDArray rtArr = Nd4j.zeros(dims, numRels);
+        for(int d=0;d<dims;d++)
+            rtArr.putScalar(new int[]{d, target.r}, 1);
+        sd.getVariable("rt").setArray(rtArr);
         sd.getVariable("input").setArray(input);
         return sd.getVariable("output").eval();
     }
@@ -157,7 +134,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
     * input is shape [feature index, node index], relshipTensor: [rels, nodes, nodes], output is [2,1]
      */
     @Override
-    public void fit(INDArray input, INDArray output, INDArray relationShipAdjTensor) {
+    public void fit(INDArray input, INDArray output, INDArray relationShipAdjTensor, Triple target) {
         for (int layer = 0; layer < layers; layer++) {
             for (int r = 0; r < numRels; r++) {
                 INDArray adjcencyMatrix = relationShipAdjTensor.tensorAlongDimension(r, 1, 2)
@@ -169,6 +146,10 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
             }
         }
 
+        INDArray rtArr = Nd4j.zeros(dims, numRels);
+        for(int d=0;d<dims;d++)
+            rtArr.putScalar(new int[]{d, target.r}, 1);
+        sd.getVariable("rt").setArray(rtArr);
         sd.getVariable("input").setArray(input);
         sd.getVariable("label").setArray(output);
         MultiDataSet ds = new MultiDataSet(input, output);

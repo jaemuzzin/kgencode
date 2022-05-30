@@ -50,8 +50,8 @@ public class MultiGraph {
         return graph;
     }
 
-    public long getRelationCount() {
-        return graph.edgeSet().stream().mapToInt(e -> e.r).distinct().count();
+    public int getRelationCount() {
+        return (int)graph.edgeSet().stream().mapToInt(e -> e.r).distinct().count();
     }
 
     public long getNodeCount() {
