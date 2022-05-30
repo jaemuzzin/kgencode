@@ -39,27 +39,19 @@ public class KGTrain {
                 MultiGraph subgraph = complete.subgraph(e.h, e.t, hops, maxSubgraphNodes).toSequentialIdGraph();
                 if(subgraph.getRelationCount()<1) return;
                 INDArray X = nodeInitializer.extract(subgraph, complete.getRelationCount(), maxSubgraphNodes);
-                model.fit(X, Nd4j.createFromArray(new double[][]{{1}, {0}}),
+                model.fit(X, Nd4j.createFromArray(new double[][]{{1, 0}}),
                         subgraph
                         .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), e);
                 
                 int dummyV = r.nextInt(complete.getEntities().size());
+                int dummyR = r.nextInt(complete.getRelationCount());
                 MultiGraph negsubgraph = complete.subgraph(e.h, dummyV, hops, maxSubgraphNodes).toSequentialIdGraph();
                 INDArray nX = nodeInitializer.extract(negsubgraph, complete.getRelationCount(), maxSubgraphNodes);
-                model.fit(nX, Nd4j.createFromArray(new double[][]{{0}, {1}}),
+                model.fit(nX, Nd4j.createFromArray(new double[][]{{0, 1}}),
                         negsubgraph
-                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h, e.r, dummyV));
+                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h, dummyR, dummyV));
                 
                 
-                int dummyR = r.nextInt(complete.getRelationCount());
-                model.fit(nX, Nd4j.createFromArray(new double[][]{{0}, {1}}),
-                        negsubgraph
-                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h, dummyR, e.t));
-                
-                System.out.println("Positive: " + model.output(X, subgraph
-                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), e));
-                System.out.println("Negative: " + model.output(nX, negsubgraph
-                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h, e.r, dummyV)));
             });
         }
     }

@@ -6,6 +6,7 @@ import cloud.asaru.thekg.RGNNShared;
 import cloud.asaru.thekg.RelGNN;
 import extractors.LSTMExtractor;
 import extractors.SimpleExtractor;
+import initializers.SimpleInitializer;
 import initializers.SpectralInitializer;
 import java.io.InputStreamReader;
 import org.junit.jupiter.api.Test;
@@ -35,7 +36,7 @@ public class KGTrainTest {
         KnowledgeGraph kg = new KnowledgeGraph();
         kg.build(new InputStreamReader(getClass().getResourceAsStream("/nell.txt")));
         RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), 100, 10, 4, true, true, new SimpleExtractor(10, kg.getRelations().size(), 100));
-        KGTrain instance = new KGTrain(kg, 10000, 2, gnn, 100, new SpectralInitializer());
+        KGTrain instance = new KGTrain(kg, 10000, 2, gnn, 100, new SimpleInitializer());
         instance.trainPositivesAndNegatives();
     }
 }

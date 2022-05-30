@@ -146,9 +146,9 @@ public class MultiGraph {
             feidlerIndex++;
         }
         //populate matrix, [node, dimension]
-        for (int n = 0; n < graph.vertexSet().size(); n++) {
+        for (int n = 0; n < nodes; n++) {
             for (int d = 0; d < dims; d++) {
-                if (feidlerIndex + d < eig[1].shape()[0]) 
+                if (feidlerIndex + d < eig[1].shape()[0] && n < eig[1].shape()[1]) 
                 {//this nodes value in dimension d is the node's value in fidelr vector + d
                     r.putScalar(new int[]{d, n}, eig[1].getDouble(feidlerIndex + d, n));
                 }
