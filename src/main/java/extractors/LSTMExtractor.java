@@ -41,8 +41,8 @@ public class LSTMExtractor implements FeatureExtractor {
         int numUnits = 7;
         //change start to indarray with shape [timeSeriesLength(start dimensions), miniBatchSize(numNodes), vectorSize (1)]
         SDVariable in = start.getSameDiff().expandDims(start, 2);
-        SDVariable cLast = start.getSameDiff().var("cLast", Nd4j.zeros(DataType.FLOAT, 1, 10));
-        SDVariable yLast = start.getSameDiff().var("yLast", Nd4j.zeros(DataType.FLOAT, 1, 10));
+        SDVariable cLast = start.getSameDiff().var("cLast", Nd4j.zeros(DataType.FLOAT, numNodes, numUnits));
+        SDVariable yLast = start.getSameDiff().var("yLast", Nd4j.zeros(DataType.FLOAT, numNodes, numUnits));
 
         LSTMLayerConfig c = LSTMLayerConfig.builder()
                 .lstmdataformat(LSTMDataFormat.TNS)
@@ -67,15 +67,15 @@ public class LSTMExtractor implements FeatureExtractor {
 
 //           Behaviour with default settings: 3d (time series) input with shape
 //          [timeSeriesLength, miniBatchSize, vectorSize] -> 2d output [miniBatchSize, vectorSize]
-//          [startDims, Nodes, 1] -> 2d output [startDims, Nodes]
+//          [startDims, Nodes, 1] -> 2d output [Nodes, finalDimension]
         SDVariable layer0 = outputs.getOutput();
-
-        SDVariable layer1 = layer0.mean(1);
-
+        SDVariable layer1 = layer0.mean(0);
+        //Nxunits
+        
         SDVariable w1 = start.getSameDiff().var("w1", Nd4j.rand(DataType.FLOAT, numUnits, finalDimension));
         SDVariable b1 = start.getSameDiff().var("b1", Nd4j.rand(DataType.FLOAT, finalDimension));
-
-        SDVariable out = start.getSameDiff().nn.softmax("out", layer1.mmul(w1).add(b1));
+        //NxfinalD
+        SDVariable out = start.getSameDiff().nn.softmax("out", start.getSameDiff().transpose(layer1.mmul(w1).add(b1)));
 
         return out;
     }
