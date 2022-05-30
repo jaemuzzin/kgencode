@@ -32,6 +32,8 @@ public class KGTrain {
         this.nodeInitializer = nodeInitializer;
     }
 
+        long iter=0;
+        int score=0;
     public void trainPositivesAndNegatives() throws FileNotFoundException {
         Random r = new Random();
         for (int epoch = 0; epoch < epochs; epoch++) {
@@ -54,9 +56,14 @@ public class KGTrain {
                         .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), e);
                 
                 INDArray n = model.output(X, subgraph
-                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), e);
-                if(o.getDouble(0, 0) > o.getDouble(0, 1)) System.out.println("Good"); else System.out.println("bad");
-                if(n.getDouble(0, 0) < n.getDouble(0, 1)) System.out.println("Good"); else System.out.println("bad");
+                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h, dummyR, e.t));
+                iter++;
+                if(o.getDouble(0, 0) > o.getDouble(0, 1)) score++;
+                if(n.getDouble(0, 0) < n.getDouble(0, 1)) score++;
+                if(iter%100==0) {
+                    System.out.println(score + " /" + 200);
+                    score=0;
+                }
             });
         }
     }

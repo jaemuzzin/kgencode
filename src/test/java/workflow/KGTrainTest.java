@@ -35,8 +35,8 @@ public class KGTrainTest {
         System.out.println("trainPositives");
         KnowledgeGraph kg = new KnowledgeGraph();
         kg.build(new InputStreamReader(getClass().getResourceAsStream("/nell.txt")));
-        int dims = 10;
-        int maxNodes = 30;
+        int dims = 30;
+        int maxNodes = 50;
         RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), maxNodes, dims, 4, true, true, new SimpleExtractor(dims, kg.getRelations().size(), maxNodes));
         KGTrain instance = new KGTrain(kg, 2, 2, gnn, maxNodes, new SpectralInitializer());
         instance.trainPositivesAndNegatives();
