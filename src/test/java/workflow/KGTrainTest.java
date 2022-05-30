@@ -35,8 +35,8 @@ public class KGTrainTest {
         System.out.println("trainPositives");
         KnowledgeGraph kg = new KnowledgeGraph();
         kg.build(new InputStreamReader(getClass().getResourceAsStream("/nell.txt")));
-        RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), 100, 10, 4, true, true, new SimpleExtractor(10, kg.getRelations().size(), 100));
-        KGTrain instance = new KGTrain(kg, 10000, 2, gnn, 100, new SimpleInitializer());
+        RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), 20, 10, 4, true, true, new SimpleExtractor(10, kg.getRelations().size(), 20));
+        KGTrain instance = new KGTrain(kg, 2, 2, gnn, 20, new SimpleInitializer());
         instance.trainPositivesAndNegatives();
     }
 }

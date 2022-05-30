@@ -88,8 +88,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
         SDVariable w4 = sd.var("cw4", new XavierInitScheme('c', 2, 4), DataType.FLOAT, 1, 4);
         SDVariable wb4 = sd.zero("cwb4", 1, 2);
         
-        SDVariable combined = sd.nn.softmax(
-                w4.mmul("output",
+        SDVariable combined = sd.nn.relu(w4.mmul(
                         sd.nn.relu(
                                 sd.nn.relu(
                                         sd.nn.relu(
@@ -99,13 +98,13 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
                                                                 0)).add(wb2),
                                                 0).mmul(w1).add(wb1),
                                         0).mmul(w3),
-                                0)).add(wb4));
-        //Define loss function:
+                                0)).add(wb4), 0);
+        SDVariable output = sd.nn.softmax("output", combined);
         SDVariable lossForGraph = sd.loss.softmaxCrossEntropy(label, combined, null);
         sd.setLossVariables(lossForGraph);
 
         //Create and set the training configuration
-        double learningRate = 1e-3;
+        double learningRate = 1e-2;
         TrainingConfig config = new TrainingConfig.Builder()
                 //.l2(1e-7) //L2 regularization
                 .updater(new Adam(learningRate)) //Adam optimizer with specified learning rate
@@ -161,8 +160,8 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
         for(int d=0;d<dims;d++)
             rtArr.putScalar(new int[]{d, target.r}, 1);
         sd.getVariable("rt").setArray(rtArr);
-        sd.getVariable("input").setArray(input);
-        sd.getVariable("label").setArray(output);
+        //sd.getVariable("input").setArray(input);
+        //sd.getVariable("label").setArray(output);
         MultiDataSet ds = new MultiDataSet(input, output);
         sd.fit(ds, new ScoreListener(20));
     }
