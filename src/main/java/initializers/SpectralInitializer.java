@@ -13,9 +13,9 @@ public class SpectralInitializer implements NodeInitializer{
     
     @Override
     public INDArray extract(MultiGraph graph, int dims, int nodes) {
-        INDArray spectral = graph.getSpectralNodeCoordsSimpleGraph(dims);
-        INDArray blanks = Nd4j.zeros(dims, nodes - spectral.shape()[1]);
-        return Nd4j.concat(1, spectral, blanks);
+        INDArray spectral = graph.getSpectralNodeCoordsSimpleGraph(dims, nodes);
+        //INDArray blanks = Nd4j.zeros(dims, nodes - spectral.shape()[1]);
+        return spectral;
     }
     
 }

@@ -37,6 +37,7 @@ public class KGTrain {
         for (int epoch = 0; epoch < epochs; epoch++) {
             complete.getGraph().edgeSet().forEach(e -> {
                 MultiGraph subgraph = complete.subgraph(e.h, e.t, hops, maxSubgraphNodes).toSequentialIdGraph();
+                if(subgraph.getRelationCount()<1) return;
                 INDArray X = nodeInitializer.extract(subgraph, complete.getRelationCount(), maxSubgraphNodes);
                 model.fit(X, Nd4j.createFromArray(new double[][]{{1}, {0}}),
                         subgraph
@@ -54,6 +55,11 @@ public class KGTrain {
                 model.fit(nX, Nd4j.createFromArray(new double[][]{{0}, {1}}),
                         negsubgraph
                         .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h, dummyR, e.t));
+                
+                System.out.println("Positive: " + model.output(X, subgraph
+                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), e));
+                System.out.println("Negative: " + model.output(nX, negsubgraph
+                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h, e.r, dummyV)));
             });
         }
     }

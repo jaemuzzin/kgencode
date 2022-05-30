@@ -130,9 +130,9 @@ public class MultiGraph {
     /*
     [feature, nodes]
      */
-    public INDArray getSpectralNodeCoordsSimpleGraph(int dims) {
+    public INDArray getSpectralNodeCoordsSimpleGraph(int dims, int nodes) {
 
-        INDArray r = Nd4j.zeros(dims, graph.vertexSet().size());
+        INDArray r = Nd4j.zeros(dims, nodes);
         INDArray laplacian = Nd4j.zeros(graph.vertexSet().size(), graph.vertexSet().size());
         //diag
         IntStream.range(0, graph.vertexSet().size()).forEach(i -> laplacian.putScalar(new int[]{i, i}, graph.edgesOf(i).size()));

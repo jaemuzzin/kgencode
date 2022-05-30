@@ -59,9 +59,9 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
                 SDVariable alpha = sd.var("alpha_" + r + "_" + layer, Nd4j.ones(dims));
                 //w = alpha times beta
                 SDVariable w = beta.mmul(sd.math.diag(alpha));
-                SDVariable b = sd.zero("b_" + r + "_" + layer, 1, dims);
+                SDVariable b = sd.zero("b_" + r + "_" + layer, 1, numNodes);
                 SDVariable adj = sd.constant("A_" + r + "_" + layer, Nd4j.zeros(numNodes, numNodes));
-                last = !sigmoid ? w.add(b).mmul(last.mmul(adj)) : sd.nn().sigmoid(w.add(b).mmul(last.mmul(adj)));
+                last = !sigmoid ? w.mmul(last.mmul(adj)).add(b) : sd.nn().sigmoid(w.mmul(last.mmul(adj)).add(b));
             }
         }
         identity = sd.concat(1, last, rt);
@@ -75,28 +75,39 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
         //DxN+R times W0(N+R, N) = DxN
         //(W2(4, D) times DxN) times W1(N, 4) = 4x4
         // W4(2,4) timex (4x4 times W3(4,1)) = 2x1
-        SDVariable w0 = sd.var("w0", new XavierInitScheme('c', numNodes + numRels, numNodes), DataType.FLOAT, numNodes + numRels, numNodes);
-        SDVariable wb0 = sd.zero("wb0", numNodes + numRels, 1);
+        SDVariable w0 = sd.var("cw0", new XavierInitScheme('c', numNodes + numRels, numNodes), DataType.FLOAT, numNodes + numRels, numNodes);
+        SDVariable wb0 = sd.zero("cwb0", 1, numNodes);
         
-        SDVariable w1 = sd.var("w1", new XavierInitScheme('c', numNodes, 4), DataType.FLOAT, numNodes, 4);
-        SDVariable wb1 = sd.zero("wb1", numNodes, 1);
+        SDVariable w1 = sd.var("cw1", new XavierInitScheme('c', numNodes, 4), DataType.FLOAT, numNodes, 4);
+        SDVariable wb1 = sd.zero("cwb1", 1, 4);
         
-        SDVariable w2 = sd.var("w2", new XavierInitScheme('c', 4, dims), DataType.FLOAT, 4, dims);
-        SDVariable wb2 = sd.zero("wb2", 4, 1);
+        SDVariable w2 = sd.var("cw2", new XavierInitScheme('c', 4, dims), DataType.FLOAT, 4, dims);
+        SDVariable wb2 = sd.zero("cwb2", 1, numNodes);
         
-        SDVariable w3 = sd.var("w3", new XavierInitScheme('c', 4, 1), DataType.FLOAT, 4, 1);
-        SDVariable w4 = sd.var("w4", new XavierInitScheme('c', 2, 4), DataType.FLOAT, 2, 4);
-        SDVariable wb4 = sd.zero("wb4", 2, 1);
+        SDVariable w3 = sd.var("cw3", new XavierInitScheme('c', 4, 1), DataType.FLOAT, 4, 1);
+        SDVariable w4 = sd.var("cw4", new XavierInitScheme('c', 2, 4), DataType.FLOAT, 2, 4);
+        SDVariable wb4 = sd.zero("cwb4", 1, 1);
         
-        SDVariable combined = w4.add(wb4).mmul(w2.add(wb2).mmul(identity.mmul(w0.add(wb0))).mmul(w1.add(wb1)).mmul(w3));
+        SDVariable combined = sd.nn.softmax(
+                w4.mmul("output",
+                        sd.nn.relu(
+                                sd.nn.relu(
+                                        sd.nn.relu(
+                                                w2.mmul(
+                                                        sd.nn.relu(
+                                                                identity.mmul(w0).add(wb0),
+                                                                0)).add(wb2),
+                                                0).mmul(w1).add(wb1),
+                                        0).mmul(w3),
+                                0)).add(wb4));
         //Define loss function:
         SDVariable lossForGraph = sd.loss.softmaxCrossEntropy(label, combined, null);
-        sd.setLossVariables(lossForGraph, lossForGraph);
+        sd.setLossVariables(lossForGraph);
 
         //Create and set the training configuration
         double learningRate = 1e-3;
         TrainingConfig config = new TrainingConfig.Builder()
-                .l2(1e-4) //L2 regularization
+                //.l2(1e-4) //L2 regularization
                 .updater(new Adam(learningRate)) //Adam optimizer with specified learning rate
                 .dataSetFeatureMapping("input") //DataSet features array should be associated with variable "input"
                 .dataSetLabelMapping("label") //DataSet label array should be associated with variable "label"

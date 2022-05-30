@@ -73,7 +73,7 @@ public class LSTMExtractor implements FeatureExtractor {
         //Nxunits
         
         SDVariable w1 = start.getSameDiff().var("w1", Nd4j.rand(DataType.FLOAT, numUnits, finalDimension));
-        SDVariable b1 = start.getSameDiff().var("b1", Nd4j.rand(DataType.FLOAT, finalDimension));
+        SDVariable b1 = start.getSameDiff().var("b1", Nd4j.rand(DataType.FLOAT, 1, finalDimension));
         //NxfinalD
         SDVariable out = start.getSameDiff().nn.softmax("out", start.getSameDiff().transpose(layer1.mmul(w1).add(b1)));
 
