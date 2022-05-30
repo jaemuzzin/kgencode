@@ -104,7 +104,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
         sd.setLossVariables(lossForGraph);
 
         //Create and set the training configuration
-        double learningRate = 1e-2;
+        double learningRate = 1e-3;
         TrainingConfig config = new TrainingConfig.Builder()
                 //.l2(1e-7) //L2 regularization
                 .updater(new Adam(learningRate)) //Adam optimizer with specified learning rate
