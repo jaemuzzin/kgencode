@@ -40,14 +40,14 @@ public class KGTrain {
                 if(subgraph.getRelationCount()<1) return;
                 //need to expand dims to make it a "minibatch"?
                 INDArray X = nodeInitializer.extract(subgraph, complete.getRelationCount(), maxSubgraphNodes);
-                model.fit(X, Nd4j.createFromArray(new double[][]{{1, 0}}),
+                model.fit(X, Nd4j.createFromArray(new float[][]{{1.0f, 0.0f}}),
                         subgraph
                         .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), e);
                 
                 int dummyV = r.nextInt(complete.getEntities().size());
                 MultiGraph negsubgraph = complete.subgraph(e.h, dummyV, hops, maxSubgraphNodes).toSequentialIdGraph();
                 INDArray nX = nodeInitializer.extract(negsubgraph, complete.getRelationCount(), maxSubgraphNodes);
-                model.fit(nX, Nd4j.createFromArray(new double[][]{{0, 1}}),
+                model.fit(nX, Nd4j.createFromArray(new float[][]{{0.0f, 1.0f}}),
                         negsubgraph
                         .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h, e.r, dummyV));
                 

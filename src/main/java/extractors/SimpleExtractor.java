@@ -43,7 +43,7 @@ public class SimpleExtractor implements FeatureExtractor {
         SDVariable w1 = start.getSameDiff().var("sw1", Nd4j.rand(DataType.FLOAT, finalDimension, startDimension));
         SDVariable b1 = start.getSameDiff().var("sb1", Nd4j.rand(DataType.FLOAT, 1, numNodes));
         //NxfinalD
-        SDVariable out = start.getSameDiff().nn.relu(w1.mmul(start).add(b1), 0);
+        SDVariable out = start.getSameDiff().nn.sigmoid(w1.mmul(start).add(b1));
 
         return out;
     }

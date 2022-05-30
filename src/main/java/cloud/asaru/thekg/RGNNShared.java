@@ -88,23 +88,23 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
         SDVariable w4 = sd.var("cw4", new XavierInitScheme('c', 2, 4), DataType.FLOAT, 1, 4);
         SDVariable wb4 = sd.zero("cwb4", 1, 2);
         
-        SDVariable combined = sd.nn.relu(w4.mmul(
-                        sd.nn.relu(
-                                sd.nn.relu(
-                                        sd.nn.relu(
+        SDVariable combined = sd.nn.sigmoid(w4.mmul(
+                        sd.nn.sigmoid(
+                                sd.nn.sigmoid(
+                                        sd.nn.sigmoid(
                                                 w2.mmul(
-                                                        sd.nn.relu(
-                                                                identity.mmul(w0).add(wb0),
-                                                                0)).add(wb2),
-                                                0).mmul(w1).add(wb1),
-                                        0).mmul(w3),
-                                0)).add(wb4), 0);
+                                                        sd.nn.sigmoid(
+                                                                identity.mmul(w0).add(wb0)
+                                                                )).add(wb2)
+                                                ).mmul(w1).add(wb1)
+                                        ).mmul(w3)
+                                )).add(wb4));
         SDVariable output = sd.nn.softmax("output", combined);
         SDVariable lossForGraph = sd.loss.softmaxCrossEntropy(label, combined, null);
         sd.setLossVariables(lossForGraph);
 
         //Create and set the training configuration
-        double learningRate = 1e-3;
+        double learningRate = 1e-2;
         TrainingConfig config = new TrainingConfig.Builder()
                 //.l2(1e-7) //L2 regularization
                 .updater(new Adam(learningRate)) //Adam optimizer with specified learning rate
