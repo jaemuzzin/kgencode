@@ -44,17 +44,16 @@ public class KGTrain {
                         subgraph
                         .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), e);
                 
-                int dummyV = r.nextInt(complete.getEntities().size());
-                MultiGraph negsubgraph = complete.subgraph(e.h, dummyV, hops, maxSubgraphNodes).toSequentialIdGraph();
-                INDArray nX = nodeInitializer.extract(negsubgraph, complete.getRelationCount(), maxSubgraphNodes);
-                model.fit(nX, Nd4j.createFromArray(new float[][]{{0.0f, 1.0f}}),
-                        negsubgraph
-                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h, e.r, dummyV));
+                int dummyR = r.nextInt(complete.getRelationCount());
+               
+                model.fit(X, Nd4j.createFromArray(new float[][]{{0.0f, 1.0f}}),
+                        subgraph
+                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h, dummyR, e.t));
                 
                 System.out.println("Positive: " + model.output(X, subgraph
                         .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), e));
-                System.out.println("Negative: " + model.output(nX, negsubgraph
-                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h, e.r, dummyV)));
+                System.out.println("Negative: " + model.output(X, subgraph
+                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h,  dummyR, e.t)));
                 
             });
         }
