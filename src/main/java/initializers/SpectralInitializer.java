@@ -10,21 +10,12 @@ import org.nd4j.linalg.factory.Nd4j;
  * @author Jae
  */
 public class SpectralInitializer implements NodeInitializer{
-MultiGraph graph;
+    
     @Override
-    public INDArray extract(MultiGraph graph) {
-        this.graph = graph;
-        INDArray feats = Nd4j.zeros(getDimensions(), graph.getNodeCount());
-        INDArray spectral = graph.toSequentialIdGraph().getSpectralNodeCoordsSimpleGraph((int)getDimensions());
-        return spectral;
-    }
-
-    @Override
-    public long getDimensions() {
-        if(graph!=null){
-            return graph.getRelationCount();
-        }
-        return 0;
+    public INDArray extract(MultiGraph graph, int dims, int nodes) {
+        INDArray spectral = graph.getSpectralNodeCoordsSimpleGraph(dims);
+        INDArray blanks = Nd4j.zeros(dims, nodes - spectral.shape()[1]);
+        return Nd4j.concat(1, spectral, blanks);
     }
     
 }

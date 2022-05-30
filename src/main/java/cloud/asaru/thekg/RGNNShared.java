@@ -12,12 +12,13 @@ import org.nd4j.linalg.inverse.InvertMatrix;
 import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.weightinit.impl.XavierInitScheme;
 import extractors.FeatureExtractor;
+import org.nd4j.linalg.dataset.MultiDataSet;
 
 /**
  *
  * @author Jae
  */
-public class RGNNShared extends RelGNNBuilder implements RelGNN{
+public class RGNNShared extends RelGNNBuilder implements RelGNN {
 
     public RGNNShared() {
     }
@@ -57,7 +58,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
                 //w = alpha times beta
                 SDVariable w = beta.mmul(sd.math.diag(alpha));
                 SDVariable b = sd.zero("b_" + r + "_" + layer, 1, dims);
-                SDVariable adj = sd.placeHolder("A_" + r + "_" + layer, DataType.FLOAT, numNodes, numNodes);
+                SDVariable adj = sd.constant("A_" + r + "_" + layer, Nd4j.zeros(numNodes, numNodes));
                 last = !sigmoid ? w.add(b).mmul(last.mmul(adj)) : sd.nn().sigmoid(w.add(b).mmul(last.mmul(adj)));
             }
         }
@@ -71,7 +72,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
         //2x2 times 2x1 = 2x1
         SDVariable graphCombinerLayer3 = sd.var("wg3", new XavierInitScheme('c', 2, 1), DataType.FLOAT, 2, 1);
         SDVariable graphCombinerBias3 = sd.zero("wgb3", 2, 1);
-        SDVariable graphProbability = sd.nn().softmax( 
+        SDVariable graphProbability = sd.nn().softmax("output",
                 //(L2x(XxL1))xL3
                 graphCombinerLayer2.add(graphCombinerBias2).mmul(
                         identity.mmul(graphCombinerLayer1.add(graphCombinerBias1))
@@ -88,7 +89,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
         TrainingConfig config = new TrainingConfig.Builder()
                 .l2(1e-4) //L2 regularization
                 .updater(new Adam(learningRate)) //Adam optimizer with specified learning rate
-                .dataSetFeatureMapping("X") //DataSet features array should be associated with variable "input"
+                .dataSetFeatureMapping("input") //DataSet features array should be associated with variable "input"
                 .dataSetLabelMapping("label") //DataSet label array should be associated with variable "label"
                 .build();
 
@@ -138,13 +139,18 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
      */
     @Override
     public INDArray output(INDArray input, INDArray relationShipAdjTensor) {
-        INDArray r = Nd4j.zeros(input.shape());
-        for (int i = 0; i < input.shape()[0]; i++) {
-            INDArray inp = input.tensorAlongDimension(i, 1, 2);
-            sd.getVariable("X").setArray(inp);
-            r.putColumn(i, identity.eval());
+        for (int layer = 0; layer < layers; layer++) {
+            for (int r = 0; r < numRels; r++) {
+                INDArray adjcencyMatrix = relationShipAdjTensor.tensorAlongDimension(r, 1, 2)
+                        .castTo(DataType.FLOAT); //self loops;
+                INDArray deg = Nd4j.diag(adjcencyMatrix.sum(1));//Transforms.pow(Nd4j.diag(adjcencyMatrix.sum(1)), -.5);
+                adjcencyMatrix = adjcencyMatrix.add(Nd4j.eye(numNodes));
+                INDArray normalizedadjcencyMatrix = deg.mul(adjcencyMatrix);
+                sd.getVariable("A_" + r + "_" + layer).setArray(normalizedadjcencyMatrix);
+            }
         }
-        return r;
+        sd.getVariable("input").setArray(input);
+        return sd.getVariable("output").eval();
     }
 
     /*
@@ -162,12 +168,10 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN{
                 sd.getVariable("A_" + r + "_" + layer).setArray(normalizedadjcencyMatrix);
             }
         }
-        for (int i = 0; i < input.shape()[0]; i++) {
-            INDArray inp = input.tensorAlongDimension(i, 1);
-            INDArray outp = output.tensorAlongDimension(i, 1);
-            sd.getVariable("X").setArray(inp);
-            DataSet ds = new DataSet(input, outp);
-            sd.fit(ds, new ScoreListener(20));
-        }
+
+        sd.getVariable("input").setArray(input);
+        sd.getVariable("label").setArray(output);
+        MultiDataSet ds = new MultiDataSet(input, output);
+        sd.fit(ds, new ScoreListener(20));
     }
 }

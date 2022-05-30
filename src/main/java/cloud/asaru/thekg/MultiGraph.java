@@ -55,8 +55,9 @@ public class MultiGraph {
     }
 
     public long getNodeCount() {
-        return getSequentialIds().size();
+        return graph.vertexSet().size();
     }
+
     /*
     * returns a new graph where nodes are 0 to N
      */
@@ -147,8 +148,10 @@ public class MultiGraph {
         //populate matrix, [node, dimension]
         for (int n = 0; n < graph.vertexSet().size(); n++) {
             for (int d = 0; d < dims; d++) {
-                //this nodes value in dimension d is the node's value in fidelr vector + d
-                r.putScalar(new int[]{d, n}, eig[1].getDouble(feidlerIndex + d, n));
+                if (feidlerIndex + d < eig[1].shape()[0]) 
+                {//this nodes value in dimension d is the node's value in fidelr vector + d
+                    r.putScalar(new int[]{d, n}, eig[1].getDouble(feidlerIndex + d, n));
+                }
             }
         }
         return r;
