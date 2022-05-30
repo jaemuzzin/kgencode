@@ -45,16 +45,18 @@ public class KGTrain {
                         .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), e);
                 
                 int dummyR = r.nextInt(complete.getRelationCount());
-               
+                while (dummyR == e.r) dummyR = r.nextInt(complete.getRelationCount());
                 model.fit(X, Nd4j.createFromArray(new float[][]{{0.0f, 1.0f}}),
                         subgraph
                         .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h, dummyR, e.t));
                 
-                System.out.println("Positive: " + model.output(X, subgraph
-                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), e));
-                System.out.println("Negative: " + model.output(X, subgraph
-                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), new Triple(e.h,  dummyR, e.t)));
+                INDArray o = model.output(X, subgraph
+                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), e);
                 
+                INDArray n = model.output(X, subgraph
+                        .getMultiRelAdjacencyTensor(maxSubgraphNodes, complete.getRelations().size()), e);
+                if(o.getDouble(0, 0) > o.getDouble(0, 1)) System.out.println("Good"); else System.out.println("bad");
+                if(n.getDouble(0, 0) < n.getDouble(0, 1)) System.out.println("Good"); else System.out.println("bad");
             });
         }
     }

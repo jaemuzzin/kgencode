@@ -88,7 +88,7 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
         SDVariable w4 = sd.var("cw4", new XavierInitScheme('c', 2, 4), DataType.FLOAT, 1, 4);
         SDVariable wb4 = sd.zero("cwb4", 1, 2);
         
-        SDVariable combined = sd.nn.sigmoid("output", w4.mmul(
+        SDVariable combined = sd.nn.sigmoid(w4.mmul(
                         sd.nn.sigmoid(
                                 sd.nn.sigmoid(
                                         sd.nn.sigmoid(
