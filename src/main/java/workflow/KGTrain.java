@@ -37,7 +37,7 @@ public class KGTrain {
     public void trainPositivesAndNegatives() throws FileNotFoundException {
         Random r = new Random();
         for (int epoch = 0; epoch < epochs; epoch++) {
-            complete.getGraph().edgeSet().forEach(e -> {
+            complete.getGraph().edgeSet().stream().parallel().forEach(e -> {
                 MultiGraph subgraph = complete.subgraph(e.h, e.t, hops, maxSubgraphNodes).toSequentialIdGraph();
                 if(subgraph.getRelationCount()<1) return;
                 //need to expand dims to make it a "minibatch"?

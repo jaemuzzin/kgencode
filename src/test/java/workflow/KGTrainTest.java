@@ -31,14 +31,39 @@ public class KGTrainTest {
         instance.trainPositivesAndNegatives();
     }*/
     @Test
+    public void testTrainPositivesFull() throws Exception {
+        System.out.println("testTrainPositivesFull");
+        KnowledgeGraph kg = new KnowledgeGraph();
+        kg.build(new InputStreamReader(getClass().getResourceAsStream("/nell.txt")));
+        int dims = 7;
+        int maxNodes = 70;
+        RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), maxNodes, dims, 5, true, true, new LSTMExtractor(dims, kg.getRelations().size(), maxNodes));
+        KGTrain instance = new KGTrain(kg, 5, 3, gnn, maxNodes, new SpectralInitializer());
+        instance.trainPositivesAndNegatives();
+    }
+    
+    @Test
     public void testTrainPositives() throws Exception {
         System.out.println("trainPositives");
         KnowledgeGraph kg = new KnowledgeGraph();
         kg.build(new InputStreamReader(getClass().getResourceAsStream("/nell.txt")));
-        int dims = 30;
-        int maxNodes = 50;
-        RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), maxNodes, dims, 4, true, true, new SimpleExtractor(dims, kg.getRelations().size(), maxNodes));
-        KGTrain instance = new KGTrain(kg, 2, 2, gnn, maxNodes, new SpectralInitializer());
+        int dims = 7;
+        int maxNodes = 100;
+        RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), maxNodes, dims, 5, true, true, new SimpleExtractor(dims, kg.getRelations().size(), maxNodes));
+        KGTrain instance = new KGTrain(kg, 5, 3, gnn, maxNodes, new SpectralInitializer());
+        instance.trainPositivesAndNegatives();
+    }
+    
+    
+    @Test
+    public void trainPositives() throws Exception {
+        System.out.println("trainPositives");
+        KnowledgeGraph kg = new KnowledgeGraph();
+        kg.build(new InputStreamReader(getClass().getResourceAsStream("/nell.txt")));
+        int dims = 7;
+        int maxNodes = 100;
+        RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), maxNodes, dims, 5, true, true, new SimpleExtractor(dims, kg.getRelations().size(), maxNodes));
+        KGTrain instance = new KGTrain(kg, 5, 3, gnn, maxNodes, new SimpleInitializer());
         instance.trainPositivesAndNegatives();
     }
 }
