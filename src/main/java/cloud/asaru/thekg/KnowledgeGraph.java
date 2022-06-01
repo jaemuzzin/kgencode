@@ -37,6 +37,11 @@ public class KnowledgeGraph extends MultiGraph {
         return relations;
     }
 
+    @Override
+    public int getRelationCount() {
+        return relations.size();
+    }
+
     public void build(Reader reader) {
         BufferedReader in = new BufferedReader(reader);
         String line = null;
