@@ -44,9 +44,9 @@ public class SimpleExtractor implements FeatureExtractor {
         // FinalxStart times StartxN = FinalXN
         SDVariable w1 = start.getSameDiff().var("sw1", Nd4j.rand(DataType.FLOAT, finalDimension, startDimension));
         SDVariable b1 = start.getSameDiff().var("sb1", Nd4j.zeros(DataType.FLOAT, finalDimension, 1));
-        SDVariable w2 = start.getSameDiff().var("sw2", Nd4j.rand(DataType.FLOAT, numNodes, finalDimension));
+        SDVariable w2 = start.getSameDiff().var("sw2", Nd4j.rand(DataType.FLOAT, finalDimension, finalDimension));
         SDVariable b2 = start.getSameDiff().var("sb2", Nd4j.zeros(DataType.FLOAT, finalDimension, 1));
-        SDVariable w3 = start.getSameDiff().var("sw3", Nd4j.rand(DataType.FLOAT, numNodes, finalDimension));
+        SDVariable w3 = start.getSameDiff().var("sw3", Nd4j.rand(DataType.FLOAT, finalDimension, finalDimension));
         SDVariable b3 = start.getSameDiff().var("sb3", Nd4j.zeros(DataType.FLOAT, finalDimension, 1));
         //NxfinalD
         SDVariable out = start.getSameDiff().nn.sigmoid(
