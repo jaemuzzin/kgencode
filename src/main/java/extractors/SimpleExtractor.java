@@ -52,7 +52,7 @@ public class SimpleExtractor implements FeatureExtractor {
         SDVariable out = start.getSameDiff().nn.sigmoid(
                 w3.mmul(start.getSameDiff().nn.sigmoid(
                         w2.mmul(start.getSameDiff().nn.sigmoid(
-                                w1.mmul(start).add(b1).add(b2))).add(b3))));
+                                w1.mmul(start).add(b1))).add(b2))).add(b3));
         return out;
         
         //return start;
