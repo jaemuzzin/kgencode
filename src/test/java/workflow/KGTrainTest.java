@@ -6,7 +6,8 @@ import cloud.asaru.thekg.RGNNShared;
 import cloud.asaru.thekg.RelGNN;
 import extractors.LSTMExtractor;
 import extractors.SimpleExtractor;
-import initializers.SimpleInitializer;
+import initializers.OnehotInitializer;
+import initializers.RandomInitializer;
 import initializers.SpectralInitializer;
 import java.io.InputStreamReader;
 import org.junit.jupiter.api.Test;
@@ -28,10 +29,10 @@ public class KGTrainTest {
         kg.build(new InputStreamReader(getClass().getResourceAsStream("/nell.txt")));
         KnowledgeGraph testkg = new KnowledgeGraph();
         testkg.build(new InputStreamReader(getClass().getResourceAsStream("/nelltest.txt")));
-        int dims = 14;
+        int dims = 30;
         int maxNodes = 30;
-        RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), maxNodes, dims, 5, true, true, new SimpleExtractor(dims, kg.getRelations().size(), maxNodes));
-        KGTrain instance = new KGTrain(kg, testkg, 2, 3, gnn, maxNodes, new SpectralInitializer());
+        RelGNN gnn = new RGNNShared().build(dims, maxNodes, dims, 5, true, true, new SimpleExtractor(dims, dims, maxNodes));
+        KGTrain instance = new KGTrain(kg, testkg, 4, 3, gnn, maxNodes, new OnehotInitializer());
         instance.trainPositivesAndNegatives();
     }
     
@@ -46,7 +47,7 @@ public class KGTrainTest {
         int dims = 14;
         int maxNodes = 30;
         RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), maxNodes, dims, 5, true, true, new SimpleExtractor(dims, kg.getRelations().size(), maxNodes));
-        KGTrain instance = new KGTrain(kg,  testkg, 2, 3, gnn, maxNodes, new SimpleInitializer());
+        KGTrain instance = new KGTrain(kg,  testkg, 1, 3, gnn, maxNodes, new RandomInitializer());
         instance.trainPositivesAndNegatives();
     }
     /*@Test

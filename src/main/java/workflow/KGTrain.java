@@ -34,17 +34,20 @@ public class KGTrain {
         this.nodeInitializer = nodeInitializer;
     }
 
-    int iter=0;
+    int iter = 0;
+
     public void trainPositivesAndNegatives() throws FileNotFoundException {
         Random r = new Random();
         for (int epoch = 0; epoch < epochs; epoch++) {
             train.getGraph().edgeSet().stream().forEach(e -> {
-                MultiGraph subgraph = train.subgraph(e.h, e.t, hops, maxSubgraphNodes).toSequentialIdGraph();
+                MultiGraph subgraphUnnorm = train.subgraph(e.h, e.t, hops, maxSubgraphNodes);
+                MultiGraph subgraph = subgraphUnnorm.toSequentialIdGraph();
                 if (subgraph.getRelationCount() < 1) {
                     return;
                 }
                 //need to expand dims to make it a "minibatch"?
-                INDArray X = nodeInitializer.embed(subgraph, train.getRelationCount(), maxSubgraphNodes);
+                INDArray X = nodeInitializer.embed(subgraph, train.getRelationCount(), maxSubgraphNodes,
+                        subgraphUnnorm.getSequentialIds().indexOf(e.h), subgraphUnnorm.getSequentialIds().indexOf(e.t));
                 model.fit(X, Nd4j.createFromArray(new float[][]{{1.0f, 0.0f}}),
                         subgraph
                                 .getMultiRelAdjacencyTensor(maxSubgraphNodes, train.getRelations().size()), e);
@@ -58,15 +61,17 @@ public class KGTrain {
                                 .getMultiRelAdjacencyTensor(maxSubgraphNodes, train.getRelations().size()), new Triple(e.h, dummyR, e.t));
                 iter++;
                 if (iter == 100) {
-                    
+
                     int score = 0;
-                    for(Triple te : test.getGraph().edgeSet()) {
-                        MultiGraph tsubgraph = test.subgraph(te.h, te.t, hops, maxSubgraphNodes).toSequentialIdGraph();
+                    for (Triple te : test.getGraph().edgeSet()) {
+                        MultiGraph tsubgraphun = test.subgraph(te.h, te.t, hops, maxSubgraphNodes);
+                        MultiGraph tsubgraph = tsubgraphun.toSequentialIdGraph();
                         if (tsubgraph.getRelationCount() < 1) {
                             return;
                         }
                         //need to expand dims to make it a "minibatch"?
-                        INDArray tX = nodeInitializer.embed(tsubgraph, train.getRelationCount(), maxSubgraphNodes);
+                        INDArray tX = nodeInitializer.embed(tsubgraph, train.getRelationCount(), maxSubgraphNodes,
+                                tsubgraphun.getSequentialIds().indexOf(e.h), tsubgraphun.getSequentialIds().indexOf(e.t));
                         int tdummyR = r.nextInt(train.getRelationCount());
                         while (tdummyR == te.r) {
                             tdummyR = r.nextInt(train.getRelationCount());
@@ -83,8 +88,8 @@ public class KGTrain {
                         }
 
                     }
-                    System.out.println(score + " /" + (test.getGraph().edgeSet().size()*2));
-                    iter=0;
+                    System.out.println(score + " /" + (test.getGraph().edgeSet().size() * 2));
+                    iter = 0;
                 }
             });
         }

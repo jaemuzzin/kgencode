@@ -13,6 +13,6 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 public interface NodeInitializer {
     
     //returns and DxN matrix of features for each node
-    public INDArray embed(MultiGraph graph, int dims, int nodes);
+    public INDArray embed(MultiGraph graph, int dims, int nodes, int h, int t);
     
 }
