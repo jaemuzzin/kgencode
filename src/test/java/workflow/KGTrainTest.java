@@ -21,29 +21,32 @@ public class KGTrainTest {
     public KGTrainTest() {
     }
 
-    /*@Test
-    public void testTrainPositives() throws Exception {
-        System.out.println("trainPositives");
-        KnowledgeGraph kg = new KnowledgeGraph();
-        kg.build(new InputStreamReader(getClass().getResourceAsStream("/nell.txt")));
-        RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), 100, 10, 4, true, true, new LSTMExtractor(10, kg.getRelations().size(), 100));
-        KGTrain instance = new KGTrain(kg, 10000, 2, gnn, 100, new SpectralInitializer());
-        instance.trainPositivesAndNegatives();
-    }*/
-    
-    
-    
     @Test
-    public void trainPositivesSimple() throws Exception {
-        System.out.println("trainPositives");
+    public void testTrainPositives() throws Exception {
+        System.out.println("testTrainPositives");
         KnowledgeGraph kg = new KnowledgeGraph();
         kg.build(new InputStreamReader(getClass().getResourceAsStream("/nell.txt")));
         KnowledgeGraph testkg = new KnowledgeGraph();
         testkg.build(new InputStreamReader(getClass().getResourceAsStream("/nelltest.txt")));
-        int dims = 10;
-        int maxNodes = 100;
+        int dims = 14;
+        int maxNodes = 30;
         RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), maxNodes, dims, 5, true, true, new SimpleExtractor(dims, kg.getRelations().size(), maxNodes));
-        KGTrain instance = new KGTrain(kg,  testkg,5, 3, gnn, maxNodes, new SimpleInitializer());
+        KGTrain instance = new KGTrain(kg, testkg, 2, 3, gnn, maxNodes, new SpectralInitializer());
+        instance.trainPositivesAndNegatives();
+    }
+    
+    
+    @Test
+    public void trainPositivesSimple() throws Exception {
+        System.out.println("trainPositivesSimple");
+        KnowledgeGraph kg = new KnowledgeGraph();
+        kg.build(new InputStreamReader(getClass().getResourceAsStream("/nell.txt")));
+        KnowledgeGraph testkg = new KnowledgeGraph();
+        testkg.build(new InputStreamReader(getClass().getResourceAsStream("/nelltest.txt")));
+        int dims = 14;
+        int maxNodes = 30;
+        RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), maxNodes, dims, 5, true, true, new SimpleExtractor(dims, kg.getRelations().size(), maxNodes));
+        KGTrain instance = new KGTrain(kg,  testkg, 2, 3, gnn, maxNodes, new SimpleInitializer());
         instance.trainPositivesAndNegatives();
     }
     /*@Test
@@ -59,18 +62,5 @@ public class KGTrainTest {
         KGTrain instance = new KGTrain(kg, testkg, 5, 3, gnn, maxNodes, new SpectralInitializer());
         instance.trainPositivesAndNegatives();
     }
-    
-    @Test
-    public void testTrainPositives() throws Exception {
-        System.out.println("testTrainPositives");
-        KnowledgeGraph kg = new KnowledgeGraph();
-        kg.build(new InputStreamReader(getClass().getResourceAsStream("/nell.txt")));
-        KnowledgeGraph testkg = new KnowledgeGraph();
-        testkg.build(new InputStreamReader(getClass().getResourceAsStream("/nelltest.txt")));
-        int dims = 7;
-        int maxNodes = 100;
-        RelGNN gnn = new RGNNShared().build(kg.getRelations().size(), maxNodes, dims, 5, true, true, new SimpleExtractor(dims, kg.getRelations().size(), maxNodes));
-        KGTrain instance = new KGTrain(kg, testkg, 5, 3, gnn, maxNodes, new SpectralInitializer());
-        instance.trainPositivesAndNegatives();
-    }*/
+    */
 }

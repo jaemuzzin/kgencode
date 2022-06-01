@@ -34,13 +34,11 @@ public class KGTrain {
         this.nodeInitializer = nodeInitializer;
     }
 
-    long iter = 0;
-    int score = 0;
-
+    int iter=0;
     public void trainPositivesAndNegatives() throws FileNotFoundException {
         Random r = new Random();
         for (int epoch = 0; epoch < epochs; epoch++) {
-            train.getGraph().edgeSet().stream().parallel().forEach(e -> {
+            train.getGraph().edgeSet().stream().forEach(e -> {
                 MultiGraph subgraph = train.subgraph(e.h, e.t, hops, maxSubgraphNodes).toSequentialIdGraph();
                 if (subgraph.getRelationCount() < 1) {
                     return;
@@ -58,9 +56,11 @@ public class KGTrain {
                 model.fit(X, Nd4j.createFromArray(new float[][]{{0.0f, 1.0f}}),
                         subgraph
                                 .getMultiRelAdjacencyTensor(maxSubgraphNodes, train.getRelations().size()), new Triple(e.h, dummyR, e.t));
-
-                if (iter % 100 == 0) {
-                    test.getGraph().edgeSet().stream().parallel().forEach(te -> {
+                iter++;
+                if (iter == 100) {
+                    
+                    int score = 0;
+                    for(Triple te : test.getGraph().edgeSet()) {
                         MultiGraph tsubgraph = test.subgraph(te.h, te.t, hops, maxSubgraphNodes).toSequentialIdGraph();
                         if (tsubgraph.getRelationCount() < 1) {
                             return;
@@ -75,7 +75,6 @@ public class KGTrain {
                                 .getMultiRelAdjacencyTensor(maxSubgraphNodes, train.getRelations().size()), te);
 
                         INDArray n = model.output(tX, tsubgraph.getMultiRelAdjacencyTensor(maxSubgraphNodes, train.getRelations().size()), new Triple(te.h, tdummyR, te.t));
-                        iter++;
                         if (o.getDouble(0, 0) > o.getDouble(0, 1)) {
                             score++;
                         }
@@ -83,9 +82,9 @@ public class KGTrain {
                             score++;
                         }
 
-                    });
+                    }
                     System.out.println(score + " /" + (test.getGraph().edgeSet().size()*2));
-                    score=0;
+                    iter=0;
                 }
             });
         }
