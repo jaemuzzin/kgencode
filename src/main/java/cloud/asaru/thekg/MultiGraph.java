@@ -106,7 +106,7 @@ public class MultiGraph {
         return hops;
     }
 
-    public MultiGraph subgraph(int u, int v, int kHops, int maxNodes) {
+    public MultiGraph subgraph(int u, int v, int kHops, int maxNodes, int r_ignore) {
         SimpleDirectedGraph<Integer, Triple> subgraph = new SimpleDirectedGraph(Triple.class);
         graph.vertexSet().stream().forEach(ve -> subgraph.addVertex(ve));
 //all edges with v or u as head or tail
@@ -119,13 +119,13 @@ public class MultiGraph {
         khopU.add(u);
         Set<Integer> khopV = new HashSet<>();
         khopV.add(v);
-        while (intersection.size()<3 && hope < kHops) {
+        while (intersection.size() < 3 && hope < kHops) {
             khopU.addAll(
-                    khopU.stream().flatMap(vi -> Graphs.neighborSetOf(graph, vi).stream().filter(n -> n!=v))
+                    khopU.stream().filter(f -> Graphs.neighborSetOf(graph, f).size() <= getRelationCount()).flatMap(vi -> Graphs.neighborSetOf(graph, vi).stream().filter(n -> n != v))
                             .collect(Collectors.toSet()));
             //of v
             khopV.addAll(
-                    khopV.stream().flatMap(vi -> Graphs.neighborSetOf(graph, vi).stream().filter(n -> n!=u))
+                    khopV.stream().filter(f -> Graphs.neighborSetOf(graph, f).size() <= getRelationCount()).flatMap(vi -> Graphs.neighborSetOf(graph, vi).stream().filter(n -> n != u))
                             .collect(Collectors.toSet()));
             //get the intersection
             intersection.addAll(khopU);
@@ -136,15 +136,33 @@ public class MultiGraph {
         intersection.add(u);
         //get edges only in this neighbourhood, add it to list.
         filteredEdges.addAll(graph.edgeSet().stream()
-                .filter(e -> 
-                        intersection.contains(e.getH()) && intersection.contains(e.getT())
-                ).collect(Collectors.toSet()));
+                .filter(e
+                        -> intersection.contains(e.getH()) && intersection.contains(e.getT()))
+                .filter(e -> !(e.h == u && e.t == v && e.r == r_ignore))
+                .collect(Collectors.toSet()));
         filteredEdges
                 .stream()
                 .filter(e -> subgraph.edgeSet().stream().flatMapToInt(e2 -> Arrays.stream(new int[]{e2.h, e2.t})).distinct().count() < maxNodes)
                 .forEach(e -> subgraph.addEdge(e.h, e.t, new Triple(e.h, e.r, e.t)));
 
-        return new MultiGraph(subgraph);
+        MultiGraph r = new MultiGraph(subgraph);
+        //remove hubs
+        /*Set<Integer> hubs = r.graph.vertexSet().stream()
+                .filter(f -> f != u && f != v)
+                .filter(f -> Graphs.neighborSetOf(graph, f).size() > getRelationCount()).collect(Collectors.toSet());
+
+        hubs.forEach(f -> r.graph.removeVertex(f));*/
+        //prune vertices not on path, they will only have 1 connection
+        while (r.graph.vertexSet().stream()
+                .filter(f -> f != u && f != v)
+                .filter(f -> Graphs.neighborSetOf(graph, f).size() == 1).count() > 0) {
+            Set<Integer> toremove = r.graph.vertexSet().stream()
+                    .filter(f -> f != u && f != v)
+                    .filter(f -> Graphs.neighborSetOf(graph, f).size() == 1).collect(Collectors.toSet());
+
+            toremove.forEach(f -> r.graph.removeVertex(f));
+        }
+        return r;
     }
 
     /*

@@ -45,7 +45,7 @@ public class KGTrain {
             train.getGraph().edgeSet().stream().forEach(e -> {
                 //skip examples where this is the only edge for head or tail
                 if(Graphs.neighborSetOf(train.getGraph(), e.h).size()==1 || Graphs.neighborSetOf(train.getGraph(), e.t).size()==1) return;
-                MultiGraph subgraphUnnorm = train.subgraph(e.h, e.t, hops, maxSubgraphNodes);
+                MultiGraph subgraphUnnorm = train.subgraph(e.h, e.t, hops, maxSubgraphNodes, e.r);
                 if(subgraphUnnorm.getSequentialIds().indexOf(e.h)==-1 || subgraphUnnorm.getSequentialIds().indexOf(e.t)==-1) throw new RuntimeException("Decrease hops or increase subgraph max size.");
                 MultiGraph subgraph = subgraphUnnorm.toSequentialIdGraph();
                 if (subgraph.getRelationCount() < 1) {
@@ -66,11 +66,14 @@ public class KGTrain {
                         subgraph
                                 .getMultiRelAdjacencyTensor(maxSubgraphNodes, train.getRelations().size()), new Triple(e.h, dummyR, e.t));
                 iter++;
-                if (iter % 10 ==0) {
+                if (iter % 100 ==0) {
 
                     int score = 0;
+                    int tested=0;
                     for (Triple te : test.getGraph().edgeSet()) {
-                        MultiGraph tsubgraphun = test.subgraph(te.h, te.t, hops, maxSubgraphNodes);
+                        //skip examples where this is the only edge for head or tail
+                        if(Graphs.neighborSetOf(test.getGraph(), te.h).size()==1 || Graphs.neighborSetOf(test.getGraph(), te.t).size()==1) continue;
+                        MultiGraph tsubgraphun = test.subgraph(te.h, te.t, hops, maxSubgraphNodes, te.r);
                         if(tsubgraphun.getSequentialIds().indexOf(te.h)==-1 || tsubgraphun.getSequentialIds().indexOf(te.t)==-1) throw new RuntimeException("Decrease hops or increase subgraph max size.");
                         MultiGraph tsubgraph = tsubgraphun.toSequentialIdGraph();
                         if (tsubgraph.getRelationCount() < 1) {
@@ -93,9 +96,10 @@ public class KGTrain {
                         if (n.getDouble(0, 0) < n.getDouble(0, 1)) {
                             score++;
                         }
+                        tested++;
 
                     }
-                    System.out.println(score + " /" + (test.getGraph().edgeSet().size() * 2));
+                    System.out.println(score + " /" + (tested * 2));
                     iter = 0;
                 }
             });

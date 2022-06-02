@@ -26,7 +26,7 @@ public class KGTrainTest {
     
     @Test
     public void testTrainPassthrough() throws Exception {
-        System.out.println("testTrainPositives");
+        System.out.println("testTrainPassthrough");
         KnowledgeGraph kg = new KnowledgeGraph();
         kg.build(new InputStreamReader(getClass().getResourceAsStream("/nell.txt")));
         KnowledgeGraph testkg = new KnowledgeGraph();
