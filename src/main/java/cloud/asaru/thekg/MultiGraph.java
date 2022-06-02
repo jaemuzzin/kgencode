@@ -51,7 +51,7 @@ public class MultiGraph {
     }
 
     public int getRelationCount() {
-        return (int)graph.edgeSet().stream().mapToInt(e -> e.r).distinct().count();
+        return (int) graph.edgeSet().stream().mapToInt(e -> e.r).distinct().count();
     }
 
     public long getNodeCount() {
@@ -67,6 +67,9 @@ public class MultiGraph {
         IntStream.range(0, nodes.size()).forEach(i -> inner.addVertex(i));
 
         graph.edgeSet().stream().forEach(e -> {
+            if (nodes.indexOf(e.h) == -1 || nodes.indexOf(e.t) == -1) {
+                throw new RuntimeException("nodes not mapped.");
+            }
             inner.addEdge(nodes.indexOf(e.h), nodes.indexOf(e.t), new Triple(nodes.indexOf(e.h), e.r, nodes.indexOf(e.t)));
         });
         return new MultiGraph(inner);
@@ -89,36 +92,53 @@ public class MultiGraph {
         return r;
     }
 
-    public MultiGraph subgraph(int u, int v, int kHops, int maxNodes) {
-        SimpleDirectedGraph<Integer, Triple> subgraph = new SimpleDirectedGraph(Triple.class);
-        graph.vertexSet().stream().forEach(ve -> subgraph.addVertex(ve));
-//all edges with v or u as head 
-        Set<Triple> filteredEdges = graph.edgeSet()
-                .stream().filter(e -> e.getH() == u || e.getH() == v).collect(Collectors.toSet());
-
+    public int getMinimumHopsBetween(int u, int v) {
         //build khop neighbourhood of u
         Set<Integer> khopU = new HashSet<>();
         khopU.add(u);
-        for (int i = 0; i < kHops; i++) {
+        int hops = 0;
+        while (!khopU.contains(v) && hops < 10) {
             khopU.addAll(
-                    khopU.stream().flatMap(vi -> Graphs.neighborSetOf(graph, vi).stream())
+                    khopU.stream().filter(vi -> graph.containsVertex(vi)).flatMap(vi -> Graphs.neighborSetOf(graph, vi).stream())
                             .collect(Collectors.toSet()));
+            hops++;
         }
-        //of v
+        return hops;
+    }
+
+    public MultiGraph subgraph(int u, int v, int kHops, int maxNodes) {
+        SimpleDirectedGraph<Integer, Triple> subgraph = new SimpleDirectedGraph(Triple.class);
+        graph.vertexSet().stream().forEach(ve -> subgraph.addVertex(ve));
+//all edges with v or u as head or tail
+        Set<Triple> filteredEdges = new HashSet<>();
+
+        //build khop neighbourhood of u
+        Set<Integer> intersection = new HashSet<>();
+        int hope = 0;
+        Set<Integer> khopU = new HashSet<>();
+        khopU.add(u);
         Set<Integer> khopV = new HashSet<>();
         khopV.add(v);
-        for (int i = 0; i < kHops; i++) {
-            khopV.addAll(
-                    khopV.stream().flatMap(vi -> Graphs.neighborSetOf(graph, vi).stream())
+        while (intersection.size()<3 && hope < kHops) {
+            khopU.addAll(
+                    khopU.stream().flatMap(vi -> Graphs.neighborSetOf(graph, vi).stream().filter(n -> n!=v))
                             .collect(Collectors.toSet()));
+            //of v
+            khopV.addAll(
+                    khopV.stream().flatMap(vi -> Graphs.neighborSetOf(graph, vi).stream().filter(n -> n!=u))
+                            .collect(Collectors.toSet()));
+            //get the intersection
+            intersection.addAll(khopU);
+            intersection.retainAll(khopV);
+            hope++;
         }
-        //get the intersection
-        Set<Integer> intersection = new HashSet<>();
-        intersection.addAll(khopU);
-        intersection.retainAll(khopV);
+        intersection.add(v);
+        intersection.add(u);
         //get edges only in this neighbourhood, add it to list.
         filteredEdges.addAll(graph.edgeSet().stream()
-                .filter(e -> intersection.contains(e.getH()) && intersection.contains(e.getT())).collect(Collectors.toSet()));
+                .filter(e -> 
+                        intersection.contains(e.getH()) && intersection.contains(e.getT())
+                ).collect(Collectors.toSet()));
         filteredEdges
                 .stream()
                 .filter(e -> subgraph.edgeSet().stream().flatMapToInt(e2 -> Arrays.stream(new int[]{e2.h, e2.t})).distinct().count() < maxNodes)
@@ -148,8 +168,7 @@ public class MultiGraph {
         //populate matrix, [node, dimension]
         for (int n = 0; n < nodes; n++) {
             for (int d = 0; d < dims; d++) {
-                if (feidlerIndex + d < eig[1].shape()[0] && n < eig[1].shape()[1]) 
-                {//this nodes value in dimension d is the node's value in fidelr vector + d
+                if (feidlerIndex + d < eig[1].shape()[0] && n < eig[1].shape()[1]) {//this nodes value in dimension d is the node's value in fidelr vector + d
                     r.putScalar(new int[]{d, n}, eig[1].getDouble(feidlerIndex + d, n));
                 }
             }
