@@ -17,26 +17,39 @@ public class TextEncoder {
     private HashMap<String, Integer> wordFreqs = new HashMap<>();
     private CharEncoder charEncoder;
 
+    public HashMap<String, Integer> getCommonWords() {
+        return commonWords;
+    }
+
+    public HashMap<String, Integer> getWords() {
+        return words;
+    }
+
+    public HashMap<String, Integer> getWordFreqs() {
+        return wordFreqs;
+    }
+
     //common words / total vocabulary
     private float commonWordRatio;
 
-    public TextEncoder(CharEncoder charEncoder, float commonWordRatio) {
-        this.charEncoder = charEncoder;
+    public TextEncoder(int dimensions, int maxLength, float commonWordRatio, String corpus) {
         this.commonWordRatio = commonWordRatio;
+        learnWords(corpus);
+        trimCommonWords();
+        System.out.println("Using " + words.size() + " common words");
+        this.charEncoder = new CharEncoder(words.size()+1, dimensions, maxLength, 0);
     }
 
-    public TextEncoder(CharEncoder charEncoder) {
-        this.charEncoder = charEncoder;
-    }
 
     public void learnWords(String corpus) {
         String[] wordArr = corpus.split("[^a-zA-Z0-9\\-']");
         Arrays.stream(wordArr)
                 .map(w -> w.toLowerCase())
                 .map(w -> w.trim())
+                .filter(w -> w.length() > 2)
                 .forEach(word -> {
             if (!wordFreqs.containsKey(word)) {
-                wordFreqs.put(word, 1);
+                wordFreqs.put(word, 0);
             }
             wordFreqs.put(word, wordFreqs.get(word) + 1);
         });
@@ -45,28 +58,29 @@ public class TextEncoder {
     public void trimCommonWords() {
         commonWords.clear();
         words.clear();
+        System.out.println("Selecting " + (int) (commonWordRatio * (float)wordFreqs.size()) + " of " + wordFreqs.size());
         wordFreqs.entrySet().stream().sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .limit((int) (commonWordRatio * wordFreqs.size()))
+                .limit((int) (commonWordRatio * (float)wordFreqs.size()))
                 .forEach(e -> commonWords.put(e.getKey(), commonWords.size() + 1));
+        System.out.println(commonWords.toString());
         wordFreqs.entrySet().stream().sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .skip((int) (commonWordRatio * wordFreqs.size()))
+                .skip((int) (commonWordRatio * (float)wordFreqs.size()))
                 .forEach(e -> words.put(e.getKey(), words.size() + 1));
     }
 
     public void fit(String sentence) {
         
         String[] sentenceArr = sentence.split("[^a-zA-Z0-9\\-']");
-        
-        charEncoder.fit(
-        Arrays.stream(sentenceArr)
+        String s = Arrays.stream(sentenceArr)
                 .map(w -> w.toLowerCase())
                 .map(w -> w.trim())
                 .filter(w -> words.containsKey(w))
                 .mapToInt(w -> words.get(w))
                 .mapToObj(id -> new String(new char[]{(char) id}))
                 .reduce((a,b) -> (a==null ? "" : a)+(b==null ? "" : b))
-                .get()
-        );
+                .orElse(null);
+        if(s==null) return;
+        charEncoder.fit(s);
     }
     
     private String translateToText(String charoutput){

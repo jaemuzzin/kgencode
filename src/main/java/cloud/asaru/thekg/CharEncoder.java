@@ -28,7 +28,7 @@ public class CharEncoder {
     int encoderSize;
     int startCharacter;
     private INDArray prep(String s){
-        if(s.length() > maxLength-1) throw new RuntimeException("string too long.");
+        if(s.length() > maxLength-1) s = s.substring(0, maxLength);
         int[][][] timeseries = new int[1][encoderSize][maxLength];
         for(int i = maxLength-s.length(); i<maxLength; i++){
             //get to 0
