@@ -31,7 +31,7 @@ public class TextEncoder {
         SentenceIterator iter = new BasicLineIterator(new ByteArrayInputStream(corpus.getBytes()));
         // Split on white spaces in the line to get words
         TokenizerFactory t = new DefaultTokenizerFactory();
-
+        wordEncoder = new SequenceEncoder(wordDimensions, encodingDimensions, maxLength);
         /*
             CommonPreprocessor will apply the following regex to each token: [\d\.:,"'\(\)\[\]|/?!;]+
             So, effectively all numbers, punctuation symbols and some special symbols are stripped off.
