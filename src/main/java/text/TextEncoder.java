@@ -26,8 +26,11 @@ public class TextEncoder {
 
     //common words / total vocabulary
     Word2Vec word2vec;
-
+int wordDimensions;
+int maxLength;
     public TextEncoder(int wordDimensions, int encodingDimensions, int maxLength, String corpus) {
+        this.wordDimensions=wordDimensions;
+        this.maxLength=maxLength;
         SentenceIterator iter = new BasicLineIterator(new ByteArrayInputStream(corpus.getBytes()));
         // Split on white spaces in the line to get words
         TokenizerFactory t = new DefaultTokenizerFactory();
@@ -58,17 +61,19 @@ public class TextEncoder {
                 .map(w -> w.toLowerCase())
                 .map(w -> w.trim())
                 .filter(w -> word2vec.hasWord(w))
+                .limit(maxLength)
                 .map(w -> word2vec.getWordVectorMatrix(w))
                 .collect(Collectors.toList()).toArray(new INDArray[0]));
+        sentenceVecs = Nd4j.concat(0, sentenceVecs, Nd4j.zeros((long)maxLength-sentenceVecs.shape()[0],wordDimensions));
         if (sentenceVecs.shape()[0] > 0) {
             wordEncoder.fit(sentenceVecs);
         }
     }
 
-    private String translateToText(INDArray arrOutput) {
+    private String translateToText(INDArray arrOutput, int length) {
         StringBuilder out = new StringBuilder();
-        for (long wi = 0; wi < arrOutput.shape()[0]; wi++) {
-            out.append(word2vec.wordsNearestSum(Nd4j.expandDims(arrOutput, 0), 1).iterator().next());
+        for (long wi = 0; wi < Math.min(arrOutput.shape()[0], length); wi++) {
+            out.append(word2vec.wordsNearestSum(Nd4j.expandDims(arrOutput.tensorAlongDimension(wi, 1), 0), 1).iterator().next());
             out.append(" ");
         }
         return out.toString();
@@ -80,9 +85,12 @@ public class TextEncoder {
                 .map(w -> w.toLowerCase())
                 .map(w -> w.trim())
                 .filter(w -> word2vec.hasWord(w))
+                .limit(maxLength)
                 .map(w -> word2vec.getWordVectorMatrix(w))
                 .collect(Collectors.toList()).toArray(new INDArray[0]));
-        return translateToText(wordEncoder.autoencode(sentenceVecs));
+        long trueLength = sentenceVecs.shape()[0];
+        sentenceVecs = Nd4j.concat(0, sentenceVecs, Nd4j.zeros((long)maxLength-sentenceVecs.shape()[0],wordDimensions));
+        return translateToText(wordEncoder.autoencode(sentenceVecs), (int)trueLength);
     }
 
     public INDArray embedding(String sentence) {
@@ -91,8 +99,10 @@ public class TextEncoder {
                 .map(w -> w.toLowerCase())
                 .map(w -> w.trim())
                 .filter(w -> word2vec.hasWord(w))
+                .limit(maxLength)
                 .map(w -> word2vec.getWordVectorMatrix(w))
                 .collect(Collectors.toList()).toArray(new INDArray[0]));
+        sentenceVecs = Nd4j.concat(0, sentenceVecs, Nd4j.zeros((long)maxLength-sentenceVecs.shape()[0],wordDimensions));
         return wordEncoder.embedding(sentenceVecs);
     }
 

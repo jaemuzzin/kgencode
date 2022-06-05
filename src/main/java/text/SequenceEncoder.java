@@ -46,7 +46,7 @@ public class SequenceEncoder {
             filterMask.putScalar(new int[]{0, i}, 1);
         }
         rnet.rnnClearPreviousState();
-        return rnet.output(Nd4j.expandDims(s.transpose(), 0), false, filterMask, filterMask);
+        return rnet.output(Nd4j.expandDims(s.transpose(), 0), false, filterMask, filterMask).tensorAlongDimension(0, 1, 2).transpose();
     }
     public INDArray embedding(INDArray s) {
         INDArray filterMask = Nd4j.zeros(1, maxLength);
@@ -76,8 +76,8 @@ public class SequenceEncoder {
                 .layer(new LSTM.Builder().nIn(embeddingSize).nOut((encoderSize+embeddingSize/2)).activation(Activation.TANH).build())
                 //.layer(new LSTM.Builder().nOut((encoderSize+embeddingSize/2)).activation(Activation.TANH).build())
                 .layer(new LSTM.Builder().nOut(encoderSize).activation(Activation.TANH).build())
-                .layer(new RnnOutputLayer.Builder(LossFunctions.LossFunction.MCXENT)
-                        .activation(Activation.SOFTMAX).nIn(encoderSize).nOut(encoderSize).build())
+                .layer(new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE)
+                        .activation(Activation.SIGMOID).nIn(encoderSize).nOut(encoderSize).build())
                 .build();
          
         rnet = new MultiLayerNetwork(rconf);
