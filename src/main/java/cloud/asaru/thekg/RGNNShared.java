@@ -21,8 +21,12 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
     }
 
     @Override
-    public RelGNN build(int numRels, int startDimensions,int numNodes, int dims, int layers, boolean learnable, boolean sigmoid, FeatureExtractor featureExtractor) {
-        return new RGNNShared(numRels, startDimensions, numNodes, dims, layers, sigmoid, featureExtractor);
+    public RelGNN build(SDVariable input, int numRels,  int numNodes, int dims, int layers, boolean learnable, boolean sigmoid, FeatureExtractor featureExtractor) {
+        return new RGNNShared(input, numRels,  numNodes, dims, layers, sigmoid, featureExtractor);
+    }
+    @Override
+    public RelGNN build(int numRels, int numNodes, int dims, int layers, boolean learnable, boolean sigmoid, FeatureExtractor featureExtractor) {
+        return new RGNNShared(numRels, numNodes, dims, layers, sigmoid, featureExtractor);
     }
 
     int numNodes;
@@ -36,16 +40,23 @@ public class RGNNShared extends RelGNNBuilder implements RelGNN {
     int numRels;
     int layers;
     Triple target;
-    protected RGNNShared(int numRels, int startDimensions, int numNodes, int dims, int layers, boolean sigmoid, FeatureExtractor featureExtractor) {
+    
+    /*
+    * in should be shape [startDimensions, numNodes]
+    */
+    protected RGNNShared(SDVariable in, int numRels,  int numNodes, int dims, int layers, boolean sigmoid, FeatureExtractor featureExtractor) {
+        init(in, numRels, numNodes, dims, layers, sigmoid, featureExtractor);
+    }
+    protected RGNNShared(int numRels, int numNodes, int dims, int layers, boolean sigmoid, FeatureExtractor featureExtractor) {
+        init(sd.placeHolder("input", DataType.FLOAT, numNodes), numRels, numNodes, dims, layers, sigmoid, featureExtractor);
+    }
+    private void init(SDVariable in, int numRels, int numNodes, int dims, int layers, boolean sigmoid, FeatureExtractor featureExtractor) {
         this.numRels = numRels;
         this.numNodes = numNodes;
         this.layers = layers;
         this.dims = dims;
-        this.startDimensions = startDimensions;
         sd = SameDiff.create();
         //the shared wieghts
-        //Create input and label variables
-        SDVariable in = sd.placeHolder("input", DataType.FLOAT, startDimensions, numNodes);
         //one-hot vector of relationship identity
         SDVariable rt = sd.constant("rt", Nd4j.zeros(dims, numRels));
         SDVariable X = featureExtractor.extract(in);

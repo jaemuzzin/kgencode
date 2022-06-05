@@ -33,7 +33,7 @@ public class KGTrainTest {
         testkg.build(new InputStreamReader(getClass().getResourceAsStream("/nelltest.txt")));
         int dims = 2;
         int maxNodes = 300;
-        RelGNN gnn = new RGNNShared().build(kg.getRelationCount(),2, maxNodes, dims, 5, true, true, new PassthroughExtractor(dims, 2, maxNodes));
+        RelGNN gnn = new RGNNShared().build(kg.getRelationCount(), maxNodes, dims, 5, true, true, new PassthroughExtractor(dims, 2, maxNodes));
         KGTrain instance = new KGTrain(kg, testkg, 4, 3, gnn, maxNodes, new DistanceInitializer(), 2);
         instance.trainPositivesAndNegatives();
     }
@@ -47,7 +47,7 @@ public class KGTrainTest {
         testkg.build(new InputStreamReader(getClass().getResourceAsStream("/nelltest.txt")));
         int dims = 2;
         int maxNodes = 300;
-        RelGNN gnn = new RGNNShared().build(kg.getRelationCount(),2, maxNodes, dims, 5, true, true, new SimpleExtractor(dims, 2, maxNodes));
+        RelGNN gnn = new RGNNShared().build(kg.getRelationCount(), maxNodes, dims, 5, true, true, new SimpleExtractor(dims, 2, maxNodes));
         KGTrain instance = new KGTrain(kg, testkg, 4, 3, gnn, maxNodes, new DistanceInitializer(), 2);
         instance.trainPositivesAndNegatives();
     }

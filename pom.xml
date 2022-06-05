@@ -18,16 +18,10 @@
     <dependencies>
         <dependency>
             <groupId>org.nd4j</groupId>
-            <artifactId>nd4j-cuda-11.4</artifactId>
+            <artifactId>nd4j-native</artifactId>
             <version>1.0.0-M2</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.nd4j</groupId>
-            <artifactId>nd4j-cuda-11.4</artifactId>
-            <version>1.0.0-M2</version>
-            <classifier>linux-x86_64-cudnn</classifier>
-        </dependency>
 
         <dependency>
             <groupId>org.deeplearning4j</groupId>
@@ -83,11 +77,11 @@
             <artifactId>jgrapht-core</artifactId>
             <version>1.5.1</version>
         </dependency>
-        <dependency>
+        <!-- dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>cuda-platform-redist</artifactId>
             <version>11.4-8.2-1.5.6</version>
-        </dependency>
+        </dependency -->
     </dependencies>
 
 

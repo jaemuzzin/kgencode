@@ -1,18 +1,11 @@
 package cloud.asaru.thekg;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.layers.DenseLayer;
-import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.conf.layers.LSTM;
-import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
 import org.deeplearning4j.nn.conf.layers.misc.RepeatVector;
 import org.deeplearning4j.nn.conf.layers.recurrent.LastTimeStep;
-import org.deeplearning4j.nn.conf.preprocessor.FeedForwardToRnnPreProcessor;
-import org.deeplearning4j.nn.conf.preprocessor.RnnToFeedForwardPreProcessor;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.transferlearning.TransferLearning;
 import org.deeplearning4j.nn.weights.WeightInit;
@@ -21,8 +14,6 @@ import org.jgrapht.graph.SimpleDirectedGraph;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.learning.config.Adam;
-import org.nd4j.linalg.learning.config.Nadam;
 import org.nd4j.linalg.learning.config.RmsProp;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
@@ -35,14 +26,16 @@ public class CharEncoder {
     int maxLength;
     int embeddingSize;
     int encoderSize;
+    int startCharacter;
     private INDArray prep(String s){
+        if(s.length() > maxLength-1) throw new RuntimeException("string too long.");
         int[][][] timeseries = new int[1][encoderSize][maxLength];
         for(int i = maxLength-s.length(); i<maxLength; i++){
             //get to 0
             for(int j=0;j < encoderSize;j++) {
                 timeseries[0][j][i] = 0;
             }
-            timeseries[0][s.charAt(i - (maxLength-s.length()))-65][i] = 1;
+            timeseries[0][s.charAt(i - (maxLength-s.length()))-startCharacter][i] = 1;
         }
         INDArray input = Nd4j.createFromArray(timeseries);
         return input;
@@ -59,7 +52,7 @@ public class CharEncoder {
                         hindex=j;
                     }
                 }
-                d.append((char)(hindex+65));
+                d.append((char)(hindex+startCharacter));
             }
         }
         return d.toString();
@@ -93,10 +86,11 @@ public class CharEncoder {
         enet.init();
         return enet.output(prep(s));
     }
-    public CharEncoder(int encoderSize, int embeddingSize, int maxLength) {
+    public CharEncoder(int encoderSize, int embeddingSize, int maxLength, int startCharacter) {
         this.encoderSize = encoderSize;
         this.embeddingSize = embeddingSize;
         this.maxLength = maxLength;
+        this.startCharacter=startCharacter;
          MultiLayerConfiguration rconf = new NeuralNetConfiguration.Builder()
                 .seed(123)
                  .miniBatch(false)
@@ -120,11 +114,4 @@ public class CharEncoder {
 
         rnet.init();
     }
-    
-    public Triple[] serialize(SimpleDirectedGraph<Integer, Integer> g) {
-        return null;
-    }
-
-    
-
 }

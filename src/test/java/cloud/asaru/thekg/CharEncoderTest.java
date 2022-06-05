@@ -15,7 +15,7 @@ import org.nd4j.linalg.api.ndarray.INDArray;
  */
 public class CharEncoderTest {
     
-    public static final CharEncoder instance = new CharEncoder(5, 15, 20);
+    public static final CharEncoder instance = new CharEncoder(5, 15, 20, 65);
     
     
     public static final String data0 = "ABBBCCCDDEEEABCDE";
