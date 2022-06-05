@@ -1,5 +1,6 @@
-package cloud.asaru.thekg;
+package text;
 
+import cloud.asaru.thekg.*;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.layers.LSTM;
@@ -21,76 +22,47 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
  *
  * @author Jae
  */
-public class CharEncoder {
+public class SequenceEncoder {
     public MultiLayerNetwork rnet;
     int maxLength;
     int embeddingSize;
     int encoderSize;
-    int startCharacter;
-    private INDArray prep(String s){
-        if(s.length() > maxLength-1) s = s.substring(0, maxLength);
-        int[][][] timeseries = new int[1][encoderSize][maxLength];
-        for(int i = maxLength-s.length(); i<maxLength; i++){
-            //get to 0
-            for(int j=0;j < encoderSize;j++) {
-                timeseries[0][j][i] = 0;
-            }
-            timeseries[0][s.charAt(i - (maxLength-s.length()))-startCharacter][i] = 1;
-        }
-        INDArray input = Nd4j.createFromArray(timeseries);
-        return input;
-    }
-    private String unprep(INDArray h, INDArray mask){
-        StringBuilder d = new StringBuilder();
-        for(int i=0;i<maxLength;i++){
-            if(mask.getInt(0, i)==1){
-                int hindex=0;
-                double max= 0;
-                for(int j=0;j<encoderSize;j++) {
-                    if(h.getDouble(0, j, i) > max){
-                        max = h.getDouble(0, j, i);
-                        hindex=j;
-                    }
-                }
-                d.append((char)(hindex+startCharacter));
-            }
-        }
-        return d.toString();
-    }
-    public void fit(String s) {
-        INDArray input = prep(s);
+    
+    /*
+    list of vectors
+    */
+    public void fit(INDArray s) {
         INDArray filterMask = Nd4j.zeros(1, maxLength);
-        for(int i=maxLength-s.length();i<maxLength;i++){
+        for(int i=maxLength-(int)s.shape()[0];i<maxLength;i++){
             filterMask.putScalar(new int[]{0, i}, 1);
         }
         rnet.rnnClearPreviousState();
-        rnet.fit(input, input, filterMask, filterMask);
+        rnet.fit(s, s, filterMask, filterMask);
     }
 
-    public String autoencode(String s) {
+    public INDArray autoencode(INDArray s) {
         INDArray filterMask = Nd4j.zeros(1, maxLength);
-        for(int i=maxLength-s.length();i<maxLength;i++){
+        for(int i=maxLength-(int)s.shape()[0];i<maxLength;i++){
             filterMask.putScalar(new int[]{0, i}, 1);
         }
         rnet.rnnClearPreviousState();
-        return unprep(rnet.output(prep(s)), filterMask);
+        return rnet.output(s, false, filterMask, filterMask);
     }
-    public INDArray embedding(String s) {
+    public INDArray embedding(INDArray s) {
         INDArray filterMask = Nd4j.zeros(1, maxLength);
-        for(int i=maxLength-s.length();i<maxLength;i++){
+        for(int i=maxLength-(int)s.shape()[0];i<maxLength;i++){
             filterMask.putScalar(new int[]{0, i}, 1);
         }
          
         MultiLayerNetwork enet = new TransferLearning.Builder(rnet)
                 .removeLayersFromOutput(4).build();
         enet.init();
-        return enet.output(prep(s));
+        return enet.output(s);
     }
-    public CharEncoder(int encoderSize, int embeddingSize, int maxLength, int startCharacter) {
+    public SequenceEncoder(int encoderSize, int embeddingSize, int maxLength) {
         this.encoderSize = encoderSize;
         this.embeddingSize = embeddingSize;
         this.maxLength = maxLength;
-        this.startCharacter=startCharacter;
          MultiLayerConfiguration rconf = new NeuralNetConfiguration.Builder()
                 .seed(123)
                  .miniBatch(false)

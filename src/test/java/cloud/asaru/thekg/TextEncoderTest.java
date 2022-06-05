@@ -130,7 +130,7 @@ public class TextEncoderTest {
 "Nobody legit will require you to buy cryptocurrency. Not to sort out a problem, not to protect your money. That’s a scam.\n" +
 "Never mix online dating and investment advice. If a new love interest wants to show you how to invest in crypto, or asks you to send them crypto, that’s a scam.";
     
-    public static final TextEncoder instance = new TextEncoder(30, 100, .25f, corpus);
+    public static final TextEncoder instance = new TextEncoder(5, 30, 100, corpus);
     
     
     public static final String data0 = "But investors with their funds in terra have seen their savings drop by around half";
@@ -153,12 +153,6 @@ public class TextEncoderTest {
         assertTrue(FuzzySearch.ratio(data0, result1) < FuzzySearch.ratio(data2, result1));
     }*/
     
-    @Test
-    public void testTrimCommonWords(){
-        instance.learnWords(corpus);
-        instance.trimCommonWords();
-        System.out.println("here"+instance.getWordFreqs().toString());
-    }
     
     @Test
     public void testEmbeddingDist() {
