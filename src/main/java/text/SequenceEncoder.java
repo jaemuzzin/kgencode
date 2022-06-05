@@ -37,7 +37,7 @@ public class SequenceEncoder {
             filterMask.putScalar(new int[]{0, i}, 1);
         }
         rnet.rnnClearPreviousState();
-        rnet.fit(s, s, filterMask, filterMask);
+        rnet.fit(Nd4j.expandDims(s.transpose(), 0), Nd4j.expandDims(s.transpose(), 0), filterMask, filterMask);
     }
 
     public INDArray autoencode(INDArray s) {
@@ -46,7 +46,7 @@ public class SequenceEncoder {
             filterMask.putScalar(new int[]{0, i}, 1);
         }
         rnet.rnnClearPreviousState();
-        return rnet.output(s, false, filterMask, filterMask);
+        return rnet.output(Nd4j.expandDims(s.transpose(), 0), false, filterMask, filterMask);
     }
     public INDArray embedding(INDArray s) {
         INDArray filterMask = Nd4j.zeros(1, maxLength);
@@ -57,7 +57,7 @@ public class SequenceEncoder {
         MultiLayerNetwork enet = new TransferLearning.Builder(rnet)
                 .removeLayersFromOutput(4).build();
         enet.init();
-        return enet.output(s);
+        return enet.output(Nd4j.expandDims(s.transpose(), 0));
     }
     public SequenceEncoder(int encoderSize, int embeddingSize, int maxLength) {
         this.encoderSize = encoderSize;
