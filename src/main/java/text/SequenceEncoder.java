@@ -37,7 +37,7 @@ public class SequenceEncoder {
             filterMask.putScalar(new int[]{0, i}, 1);
         }
         rnet.rnnClearPreviousState();
-        rnet.fit(Nd4j.expandDims(s.transpose(), 0), Nd4j.expandDims(s.transpose(), 0), filterMask, filterMask);
+        rnet.fit(Nd4j.nn.tanh(Nd4j.expandDims(s.transpose(), 0)), Nd4j.nn.tanh(Nd4j.expandDims(s.transpose(), 0)), filterMask, filterMask);
     }
 
     public INDArray autoencode(INDArray s) {
@@ -46,7 +46,7 @@ public class SequenceEncoder {
             filterMask.putScalar(new int[]{0, i}, 1);
         }
         rnet.rnnClearPreviousState();
-        return rnet.output(Nd4j.expandDims(s.transpose(), 0), false, filterMask, filterMask).tensorAlongDimension(0, 1, 2).transpose();
+        return rnet.output(Nd4j.nn.tanh(Nd4j.expandDims(s.transpose(), 0)), false, filterMask, filterMask).tensorAlongDimension(0, 1, 2).transpose();
     }
     public INDArray embedding(INDArray s) {
         INDArray filterMask = Nd4j.zeros(1, maxLength);
@@ -57,7 +57,7 @@ public class SequenceEncoder {
         MultiLayerNetwork enet = new TransferLearning.Builder(rnet)
                 .removeLayersFromOutput(4).build();
         enet.init();
-        return enet.output(Nd4j.expandDims(s.transpose(), 0));
+        return enet.output(Nd4j.nn.tanh(Nd4j.expandDims(s.transpose(), 0)));
     }
     public SequenceEncoder(int encoderSize, int embeddingSize, int maxLength) {
         this.encoderSize = encoderSize;
@@ -76,13 +76,13 @@ public class SequenceEncoder {
                 .layer(new LSTM.Builder().nIn(embeddingSize).nOut((encoderSize+embeddingSize/2)).activation(Activation.TANH).build())
                 //.layer(new LSTM.Builder().nOut((encoderSize+embeddingSize/2)).activation(Activation.TANH).build())
                 .layer(new LSTM.Builder().nOut(encoderSize).activation(Activation.TANH).build())
-                .layer(new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE)
-                        .activation(Activation.IDENTITY).nIn(encoderSize).nOut(encoderSize).build())
+                .layer(new RnnOutputLayer.Builder(LossFunctions.LossFunction.RECONSTRUCTION_CROSSENTROPY)
+                        .activation(Activation.TANH).nIn(encoderSize).nOut(encoderSize).build())
                 .build();
          
         rnet = new MultiLayerNetwork(rconf);
         
-        rnet.setListeners(new ScoreIterationListener(190));   //Print the score (loss function value) every 20 iterations
+        rnet.setListeners(new ScoreIterationListener(50));
 
         rnet.init();
     }
