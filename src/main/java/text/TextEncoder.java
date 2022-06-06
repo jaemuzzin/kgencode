@@ -43,7 +43,7 @@ int maxLength;
         t.setTokenPreProcessor(new CommonPreprocessor());
         word2vec = new Word2Vec.Builder()
                 .minWordFrequency(2)
-                .iterations(1)
+                .iterations(5000)
                 .layerSize(wordDimensions)
                 .seed(123)
                 .windowSize(5)
