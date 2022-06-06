@@ -95,7 +95,7 @@ public class CharEncoder {
                 .seed(123)
                  .miniBatch(false)
                 .weightInit(WeightInit.XAVIER)
-                .updater(new RmsProp(0.01)).biasInit(0)
+                .updater(new RmsProp(0.001)).biasInit(0)
                 .list()
                 .layer(new LSTM.Builder().nIn(encoderSize).nOut((encoderSize+embeddingSize/2)).activation(Activation.TANH).build())
                 //.layer(new LSTM.Builder().nOut((encoderSize+embeddingSize/2)).activation(Activation.TANH).build())

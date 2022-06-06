@@ -130,7 +130,7 @@ public class TextEncoderTest {
 "Nobody legit will require you to buy cryptocurrency. Not to sort out a problem, not to protect your money. That’s a scam.\n" +
 "Never mix online dating and investment advice. If a new love interest wants to show you how to invest in crypto, or asks you to send them crypto, that’s a scam.";
     
-    public static final TextEncoder instance = new TextEncoder(20, 30, 100, corpus);
+    public static final TextEncoder instance = new TextEncoder(50, 30, 50, corpus);
     
     
     public static final String data0 = "But investors with their funds in terra have seen their savings drop by around half";
@@ -166,7 +166,7 @@ public class TextEncoderTest {
     static {
         Random rand = new Random(123);
         for(int i=0;i<50000;i++){
-            int len = 50 + rand.nextInt(1000);
+            int len = 50 + rand.nextInt(600);
             int start = rand.nextInt(corpus.length() - len);
             String example = corpus.substring(start, start+len);
             //System.out.println(random.toString());

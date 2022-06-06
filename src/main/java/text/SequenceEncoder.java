@@ -67,7 +67,7 @@ public class SequenceEncoder {
                 .seed(123)
                  .miniBatch(false)
                 .weightInit(WeightInit.XAVIER)
-                .updater(new RmsProp(0.01)).biasInit(0)
+                .updater(new RmsProp(0.001)).biasInit(0)
                 .list()
                 .layer(new LSTM.Builder().nIn(encoderSize).nOut((encoderSize+embeddingSize/2)).activation(Activation.TANH).build())
                 //.layer(new LSTM.Builder().nOut((encoderSize+embeddingSize/2)).activation(Activation.TANH).build())
@@ -77,7 +77,7 @@ public class SequenceEncoder {
                 //.layer(new LSTM.Builder().nOut((encoderSize+embeddingSize/2)).activation(Activation.TANH).build())
                 .layer(new LSTM.Builder().nOut(encoderSize).activation(Activation.TANH).build())
                 .layer(new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE)
-                        .activation(Activation.SIGMOID).nIn(encoderSize).nOut(encoderSize).build())
+                        .activation(Activation.IDENTITY).nIn(encoderSize).nOut(encoderSize).build())
                 .build();
          
         rnet = new MultiLayerNetwork(rconf);
