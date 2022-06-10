@@ -76,7 +76,7 @@ public class SequenceEncoder {
                 .layer(new LSTM.Builder().nIn(embeddingSize).nOut((encoderSize+embeddingSize/2)).activation(Activation.TANH).build())
                 //.layer(new LSTM.Builder().nOut((encoderSize+embeddingSize/2)).activation(Activation.TANH).build())
                 .layer(new LSTM.Builder().nOut(encoderSize).activation(Activation.TANH).build())
-                .layer(new RnnOutputLayer.Builder(LossFunctions.LossFunction.RECONSTRUCTION_CROSSENTROPY)
+                .layer(new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE)
                         .activation(Activation.TANH).nIn(encoderSize).nOut(encoderSize).build())
                 .build();
          

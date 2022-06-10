@@ -14,6 +14,7 @@ import initializers.SpectralInitializer;
 import java.io.InputStreamReader;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
+import org.nd4j.autodiff.samediff.SameDiff;
 
 /**
  *
@@ -32,8 +33,9 @@ public class KGTrainTest {
         KnowledgeGraph testkg = new KnowledgeGraph();
         testkg.build(new InputStreamReader(getClass().getResourceAsStream("/nelltest.txt")));
         int dims = 2;
-        int maxNodes = 300;
-        RelGNN gnn = new RGNNShared().build(kg.getRelationCount(), maxNodes, dims, 5, true, true, new PassthroughExtractor(dims, 2, maxNodes));
+        int maxNodes = 100;
+        SameDiff sd =SameDiff.create();
+        RelGNN gnn = new RGNNShared().build(sd,kg.getRelationCount(), maxNodes, dims, 5, true, true, new PassthroughExtractor(dims, 2, maxNodes));
         KGTrain instance = new KGTrain(kg, testkg, 4, 3, gnn, maxNodes, new DistanceInitializer(), 2);
         instance.trainPositivesAndNegatives();
     }
@@ -46,8 +48,9 @@ public class KGTrainTest {
         KnowledgeGraph testkg = new KnowledgeGraph();
         testkg.build(new InputStreamReader(getClass().getResourceAsStream("/nelltest.txt")));
         int dims = 2;
-        int maxNodes = 300;
-        RelGNN gnn = new RGNNShared().build(kg.getRelationCount(), maxNodes, dims, 5, true, true, new SimpleExtractor(dims, 2, maxNodes));
+        int maxNodes = 100;
+        SameDiff sd =SameDiff.create();
+        RelGNN gnn = new RGNNShared().build(sd,kg.getRelationCount(), maxNodes, dims, 5, true, true, new SimpleExtractor(dims, 2, maxNodes));
         KGTrain instance = new KGTrain(kg, testkg, 4, 3, gnn, maxNodes, new DistanceInitializer(), 2);
         instance.trainPositivesAndNegatives();
     }

@@ -61,8 +61,8 @@ public class MultiGraph {
     /*
     * returns a new graph where nodes are 0 to N
      */
-    public MultiGraph toSequentialIdGraph() {
-        List<Integer> nodes = getSequentialIds();
+    public MultiGraph toSequentialIdGraph(int u, int v) {
+        List<Integer> nodes = getSequentialIds(u, v);
         SimpleDirectedGraph<Integer, Triple> inner = new SimpleDirectedGraph<>(Triple.class);
         IntStream.range(0, nodes.size()).forEach(i -> inner.addVertex(i));
 
@@ -78,9 +78,11 @@ public class MultiGraph {
     /*
     * returns the origal ids referenced by the sequential ids in toSequentialIdGraph
      */
-    public List<Integer> getSequentialIds() {
+    public List<Integer> getSequentialIds(int u, int v) {
         List<Integer> nodes = new ArrayList<>();
         //only add nodes with edges
+        nodes.add(u);
+        nodes.add(v);
         nodes.addAll(graph.edgeSet().stream().flatMapToInt(e -> Arrays.stream(new int[]{e.h, e.t})).distinct().boxed().collect(Collectors.toList()));
         return nodes;
     }

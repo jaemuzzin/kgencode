@@ -33,10 +33,10 @@ public class PassthroughExtractor implements FeatureExtractor {
     @Override
     public SDVariable extract(SDVariable start) {
         if (start.getShape()[0] != startDimension) {
-            throw new IllegalArgumentException("shape must be startDimensions x numNodes");
+            throw new IllegalArgumentException("shape must be startDimensions x numNodes, got " + start.getShape());
         }
         if (start.getShape()[1] != numNodes) {
-            throw new IllegalArgumentException("shape must be startDimensions x numNodes");
+            throw new IllegalArgumentException("shape must be startDimensions x numNodes" + start.getShape());
         }
         
 
