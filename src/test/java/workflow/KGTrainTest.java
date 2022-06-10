@@ -4,16 +4,11 @@ package workflow;
 import cloud.asaru.thekg.KnowledgeGraph;
 import cloud.asaru.thekg.RGNNShared;
 import cloud.asaru.thekg.RelGNN;
-import extractors.LSTMExtractor;
 import extractors.PassthroughExtractor;
 import extractors.SimpleExtractor;
 import initializers.DistanceInitializer;
-import initializers.OnehotInitializer;
-import initializers.RandomInitializer;
-import initializers.SpectralInitializer;
 import java.io.InputStreamReader;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
 import org.nd4j.autodiff.samediff.SameDiff;
 
 /**
@@ -33,7 +28,7 @@ public class KGTrainTest {
         KnowledgeGraph testkg = new KnowledgeGraph();
         testkg.build(new InputStreamReader(getClass().getResourceAsStream("/nelltest.txt")));
         int dims = 2;
-        int maxNodes = 100;
+        int maxNodes = 40;
         SameDiff sd =SameDiff.create();
         RelGNN gnn = new RGNNShared().build(sd,kg.getRelationCount(), maxNodes, dims, 5, true, true, new PassthroughExtractor(dims, 2, maxNodes));
         KGTrain instance = new KGTrain(kg, testkg, 4, 3, gnn, maxNodes, new DistanceInitializer(), 2);
@@ -48,7 +43,7 @@ public class KGTrainTest {
         KnowledgeGraph testkg = new KnowledgeGraph();
         testkg.build(new InputStreamReader(getClass().getResourceAsStream("/nelltest.txt")));
         int dims = 2;
-        int maxNodes = 100;
+        int maxNodes = 40;
         SameDiff sd =SameDiff.create();
         RelGNN gnn = new RGNNShared().build(sd,kg.getRelationCount(), maxNodes, dims, 5, true, true, new SimpleExtractor(dims, 2, maxNodes));
         KGTrain instance = new KGTrain(kg, testkg, 4, 3, gnn, maxNodes, new DistanceInitializer(), 2);

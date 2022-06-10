@@ -164,6 +164,9 @@ public class MultiGraph {
 
             toremove.forEach(f -> r.graph.removeVertex(f));
         }
+        while(r.graph.vertexSet().size() > maxNodes) {
+            r.graph.removeVertex(r.graph.vertexSet().stream().filter(f -> f != u && f != v).sorted((a,b) -> Integer.compare(r.graph.degreeOf(a), r.graph.degreeOf(b))).findFirst().get());
+        }
         return r;
     }
 

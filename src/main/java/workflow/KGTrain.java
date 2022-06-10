@@ -35,19 +35,29 @@ public class KGTrain {
         this.maxSubgraphNodes = maxSubgraphNodes;
         this.nodeInitializer = nodeInitializer;
         this.embeddingDimensions = embeddingDimensions;
+        subgraphCache = new MultiGraph[(int) train.getNodeCount()][(int) train.getNodeCount()];
     }
 
     int iter = 0;
+    MultiGraph[][] subgraphCache;
 
     public void trainPositivesAndNegatives() throws FileNotFoundException {
         Random r = new Random();
         for (int epoch = 0; epoch < epochs; epoch++) {
             train.getGraph().edgeSet().stream().forEach(e -> {
                 //skip examples where this is the only edge for head or tail
-                if(Graphs.neighborSetOf(train.getGraph(), e.h).size()==1 || Graphs.neighborSetOf(train.getGraph(), e.t).size()==1) return;
+                if (Graphs.neighborSetOf(train.getGraph(), e.h).size() == 1 || Graphs.neighborSetOf(train.getGraph(), e.t).size() == 1) {
+                    return;
+                }
                 MultiGraph subgraphUnnorm = train.subgraph(e.h, e.t, hops, maxSubgraphNodes, e.r);
-                if(subgraphUnnorm.getSequentialIds(e.h, e.t).indexOf(e.h)==-1 || subgraphUnnorm.getSequentialIds(e.h, e.t).indexOf(e.t)==-1) throw new RuntimeException("Decrease hops or increase subgraph max size.");
-                MultiGraph subgraph = subgraphUnnorm.toSequentialIdGraph(e.h, e.t);
+                if (subgraphUnnorm.getSequentialIds(e.h, e.t).indexOf(e.h) == -1 || subgraphUnnorm.getSequentialIds(e.h, e.t).indexOf(e.t) == -1) {
+                    throw new RuntimeException("Decrease hops or increase subgraph max size.");
+                }
+                if (subgraphCache[e.h][e.t] == null) {
+                    subgraphCache[e.h][e.t] = subgraphUnnorm.toSequentialIdGraph(e.h, e.t);
+                }
+
+                MultiGraph subgraph = subgraphCache[e.h][e.t];
                 if (subgraph.getRelationCount() < 1) {
                     return;
                 }
@@ -57,29 +67,33 @@ public class KGTrain {
                 model.fit(X, Nd4j.createFromArray(new float[][]{{1.0f, 0.0f}}),
                         subgraph
                                 .getMultiRelAdjacencyTensor(maxSubgraphNodes, train.getRelations().size()), e);
-
                 int dummyR = r.nextInt(train.getRelationCount());
                 while (dummyR == e.r) {
                     dummyR = r.nextInt(train.getRelationCount());
                 }
+                
                 model.fit(X, Nd4j.createFromArray(new float[][]{{0.0f, 1.0f}}),
                         subgraph
                                 .getMultiRelAdjacencyTensor(maxSubgraphNodes, train.getRelations().size()), new Triple(e.h, dummyR, e.t));
                 iter++;
-                if (iter % 100 ==0) {
+                if (iter % 100 == 0) {
 
                     int score = 0;
-                    int tested=0;
+                    int tested = 0;
                     for (Triple te : test.getGraph().edgeSet()) {
                         //skip examples where this is the only edge for head or tail
-                        if(Graphs.neighborSetOf(test.getGraph(), te.h).size()==1 || Graphs.neighborSetOf(test.getGraph(), te.t).size()==1) continue;
+                        if (Graphs.neighborSetOf(test.getGraph(), te.h).size() == 1 || Graphs.neighborSetOf(test.getGraph(), te.t).size() == 1) {
+                            continue;
+                        }
                         MultiGraph tsubgraphun = test.subgraph(te.h, te.t, hops, maxSubgraphNodes, te.r);
-                        if(tsubgraphun.getSequentialIds(te.h, te.t).indexOf(te.h)==-1 || tsubgraphun.getSequentialIds(te.h, te.t).indexOf(te.t)==-1) throw new RuntimeException("Decrease hops or increase subgraph max size.");
+                        if (tsubgraphun.getSequentialIds(te.h, te.t).indexOf(te.h) == -1 || tsubgraphun.getSequentialIds(te.h, te.t).indexOf(te.t) == -1) {
+                            throw new RuntimeException("Decrease hops or increase subgraph max size.");
+                        }
                         MultiGraph tsubgraph = tsubgraphun.toSequentialIdGraph(te.h, te.t);
                         if (tsubgraph.getRelationCount() < 1) {
-                            return;
+                            continue;
                         }
-                       
+
                         INDArray tX = nodeInitializer.embed(tsubgraph, embeddingDimensions, maxSubgraphNodes,
                                 tsubgraphun.getSequentialIds(te.h, te.t).indexOf(te.h), tsubgraphun.getSequentialIds(te.h, te.t).indexOf(te.t));
                         int tdummyR = r.nextInt(train.getRelationCount());
